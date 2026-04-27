@@ -1,0 +1,39 @@
+# OS / editores
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dependências (cada subprojeto Node tem seu próprio node_modules)
+node_modules/
+.pnp
+.pnp.js
+
+# Build artifacts
+dist/
+dist-ssr/
+build/
+out/
+*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Cache / coverage
+.cache/
+.parcel-cache/
+.eslintcache
+.turbo
+coverage/
+
+# Env
+.env
+.env.local
+.env.*.local

@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="PokéCode — Batalha educacional em estilo Game Boy. Aprenda a digitar comandos como um programador. Projeto educacional Unisanta.">
+<meta name="author" content="Alunos da Unisanta — Feira de Profissões">
+<title>PokéCode — Batalha Educacional</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* =====================================================================
+   PokéCode Battle — Folha de estilos
+   ---------------------------------------------------------------------
+   Mantém a estética Game Boy original e adiciona:
+     • Overlay de tutorial passo-a-passo
+     • Painel de "cola" de comandos sempre visível
+     • Indicadores de tipo com cor (planta/fogo/água)
+     • Toggle entre modo 1 jogador (vs CPU) e 2 jogadores locais
+   ===================================================================== */
+
+:root {
+  --bg:        #c8d8e8;
+  --panel-bg:  #f0f0f0;
+  --border:    #303030;
+  --hp-green:  #48c840;
+  --hp-yellow: #f8d030;
+  --hp-red:    #f03030;
+  --dialog-bg: #f8f8f0;
+  --text:      #181818;
+  --accent:    #3850a0;
+  --shadow:    #00000055;
+
+  /* Cores de tipo (educativas, mostradas nos cartões e logs) */
+  --type-grass: #58c850;
+  --type-fire:  #e87030;
+  --type-water: #4090d8;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0a0f1e;
+  background-image:
+    radial-gradient(ellipse at top, #1e293b 0%, #0a0f1e 70%),
+    linear-gradient(rgba(34,211,238,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34,211,238,0.04) 1px, transparent 1px);
+  background-size: auto, 32px 32px, 32px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px 12px;
+  font-family: 'Sora', 'Courier New', monospace;
+  color: var(--text);
+}
+
+h1 {
+  color: #f8d030;
+  font-size: 1.4rem;
+  letter-spacing: 4px;
+  text-shadow: 3px 3px 0 #b8860b;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  font-family: 'Courier New', monospace;
+}
+
+.subtitle {
+  color: #94a3b8;
+  font-size: 0.7rem;
+  letter-spacing: 2px;
+  margin-bottom: 14px;
+  text-transform: uppercase;
+}
+
+/* =====================================================================
+   GAME BOY FRAME
+   ===================================================================== */
+.gameboy {
+  background: #e8e0c8;
+  border-radius: 16px 16px 40% 40% / 16px 16px 20px 20px;
+  padding: 18px 22px 30px;
+  box-shadow: 0 8px 32px #00000088, inset 0 2px 0 #ffffffaa;
+  width: 540px;
+  max-width: 100%;
+  border: 3px solid #b0a888;
+}
+
+.screen-bezel {
+  background: #303040;
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: inset 0 4px 12px #000000aa;
+  margin-bottom: 16px;
+}
+
+/* =====================================================================
+   ARENA DE BATALHA
+   ===================================================================== */
+.battle-arena {
+  background: var(--bg);
+  width: 100%;
+  height: 200px;
+  position: relative;
+  overflow: hidden;
+  border: 3px solid var(--border);
+  image-rendering: pixelated;
+}
+
+.battle-arena::before {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 56px;
+  background: repeating-linear-gradient(
+    90deg,
+    #a8b8a0 0px, #a8b8a0 8px,
+    #98a890 8px, #98a890 16px
+  );
+  border-top: 3px solid var(--border);
+}
+
+.platform-enemy {
+  position: absolute;
+  top: 86px; left: 32px;
+  width: 100px; height: 18px;
+  background: #888080;
+  border-radius: 50%;
+  box-shadow: 0 4px 0 #686060;
+}
+
+.platform-player {
+  position: absolute;
+  bottom: 42px; right: 32px;
+  width: 120px; height: 22px;
+  background: #888080;
+  border-radius: 50%;
+  box-shadow: 0 4px 0 #686060;
+}
+
+.sprite {
+  position: absolute;
+  image-rendering: pixelated;
+  transition: filter 0.1s;
+}
+
+.sprite.hit { animation: hitFlash 0.4s steps(1); }
+
+@keyframes hitFlash {
+  0%,100% { filter: none; }
+  25%,75% { filter: brightness(10) saturate(0); }
+  50%     { filter: none; }
+}
+
+.sprite-enemy  { top: 18px; left: 22px; width: 84px; height: 84px; }
+.sprite-player { bottom: 38px; right: 26px; width: 100px; height: 100px; }
+
+/* =====================================================================
+   PAINÉIS DE STATUS
+   ===================================================================== */
+.status-enemy, .status-player {
+  position: absolute;
+  background: var(--panel-bg);
+  border: 2px solid var(--border);
+  padding: 4px 8px;
+  width: 170px;
+  box-shadow: 3px 3px 0 var(--shadow);
+  font-size: 0.7rem;
+  font-family: 'Courier New', monospace;
+}
+.status-enemy  { top: 10px;  right: 10px; }
+.status-player { bottom: 50px; left: 10px; }
+
+.status-name {
+  font-weight: bold;
+  font-size: 0.78rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-level { color: var(--accent); font-size: 0.65rem; }
+
+/* Pequeno chip de tipo (planta/fogo/água) */
+.type-chip {
+  display: inline-block;
+  font-size: 0.55rem;
+  padding: 1px 6px;
+  border-radius: 8px;
+  color: #fff;
+  margin-left: 4px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.type-chip.grass { background: var(--type-grass); }
+.type-chip.fire  { background: var(--type-fire);  }
+.type-chip.water { background: var(--type-water); }
+
+.hp-label { font-size: 0.6rem; margin-top: 2px; text-align: right; color: #555; }
+.hp-bar-wrap { background: #888; height: 6px; border: 1px solid var(--border); margin-top: 2px; }
+.hp-bar { height: 100%; background: var(--hp-green); transition: width 0.4s ease, background 0.4s ease; }
+.hp-value { font-size: 0.6rem; text-align: right; margin-top: 1px; }
+
+/* =====================================================================
+   CAIXA DE DIÁLOGO
+   ===================================================================== */
+.dialog-box {
+  background: var(--dialog-bg);
+  border: 3px solid var(--border);
+  padding: 10px 14px;
+  min-height: 60px;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  position: relative;
+  box-shadow: inset 1px 1px 0 #fff;
+  letter-spacing: 0.5px;
+  font-family: 'Courier New', monospace;
+}
+.dialog-box p { margin: 0; min-height: 1.2em; white-space: pre-wrap; }
+
+.dialog-cursor {
+  display: inline-block;
+  width: 8px; height: 8px;
+  background: var(--text);
+  margin-left: 4px;
+  animation: blink 0.7s steps(1) infinite;
+  vertical-align: middle;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* =====================================================================
+   TERMINAL / INPUT
+   ===================================================================== */
+.terminal-section {
+  margin-top: 12px;
+  background: #181820;
+  border-radius: 8px;
+  padding: 10px 12px;
+  border: 2px solid #303048;
+}
+
+.terminal-log {
+  height: 140px;
+  overflow-y: auto;
+  font-size: 0.7rem;
+  color: #a0e0a0;
+  line-height: 1.6;
+  padding-right: 4px;
+  margin-bottom: 8px;
+  font-family: 'Courier New', monospace;
+}
+.terminal-log::-webkit-scrollbar { width: 4px; }
+.terminal-log::-webkit-scrollbar-thumb { background: #304830; }
+
+.log-line { padding: 1px 0; }
+.log-line.error  { color: #ff6060; }
+.log-line.info   { color: #80c0ff; }
+.log-line.warn   { color: #f8d030; }
+.log-line.system { color: #d0d0d0; }
+.log-line.damage { color: #ff9040; }
+.log-line.win    { color: #f8d030; font-weight: bold; }
+.log-line.tip    { color: #98e0c0; font-style: italic; }
+
+.terminal-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-top: 1px solid #303048;
+  padding-top: 8px;
+}
+.prompt-indicator {
+  color: #48c840;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  font-family: 'Courier New', monospace;
+}
+#cmdInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #e8e8e8;
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  caret-color: #48c840;
+}
+#cmdInput:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* =====================================================================
+   PAINÉIS DE AJUDA
+   ===================================================================== */
+.help-panel {
+  margin-top: 8px;
+  background: #0d0d1a;
+  border-radius: 6px;
+  padding: 6px 10px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.attack-btn {
+  background: #1e3050;
+  color: #a0c8f0;
+  border: 1px solid #304878;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.65rem;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+.attack-btn:hover:not(:disabled) { background: #2a4878; transform: translateY(-1px); }
+.attack-btn:active:not(:disabled) { transform: translateY(0); }
+.attack-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.attack-btn.danger {
+  background: #301818;
+  color: #f08080;
+  border-color: #603030;
+}
+
+/* "Cola" de comandos sempre visível */
+.cheatsheet {
+  margin-top: 10px;
+  background: #0d0d1a;
+  border: 1px solid #2a3550;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+  color: #b0c0e0;
+}
+.cheatsheet h4 {
+  color: #98e0c0;
+  font-size: 0.7rem;
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.cheatsheet code {
+  background: #1a2540;
+  color: #e0e0e0;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+}
+.cheatsheet ul { list-style: none; padding-left: 0; }
+.cheatsheet li { margin: 3px 0; }
+
+.turn-label {
+  text-align: center;
+  font-size: 0.7rem;
+  color: #8080c0;
+  margin-bottom: 4px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.choose-phase {
+  color: #c0e0ff;
+  font-size: 0.75rem;
+  text-align: center;
+  margin-bottom: 4px;
+  letter-spacing: 1px;
+}
+
+/* =====================================================================
+   TUTORIAL OVERLAY
+   ===================================================================== */
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px;
+}
+.tutorial-overlay.hidden { display: none; }
+
+.tutorial-card {
+  background: linear-gradient(135deg, #1e293b, #0a0f1e);
+  border: 2px solid #22d3ee;
+  border-radius: 14px;
+  padding: 28px 32px;
+  max-width: 540px;
+  width: 100%;
+  color: #e2e8f0;
+  font-family: 'Sora', 'Courier New', monospace;
+  box-shadow: 0 12px 60px rgba(34,211,238,0.2);
+}
+
+.tutorial-card h2 {
+  color: #22d3ee;
+  font-size: 1.4rem;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+.tutorial-card .step {
+  font-size: 0.65rem;
+  letter-spacing: 2px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.tutorial-card p {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-bottom: 12px;
+  color: #cbd5e1;
+}
+.tutorial-card code {
+  background: #0a0f1e;
+  border: 1px solid #334155;
+  color: #22d3ee;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85em;
+}
+.tutorial-card .highlight {
+  color: #f8d030;
+  font-weight: 600;
+}
+.tutorial-card .tutorial-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+.tutorial-card button {
+  flex: 1 1 130px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Sora', sans-serif;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: transform 0.15s, filter 0.15s;
+}
+.tutorial-card button:hover { transform: translateY(-1px); filter: brightness(1.1); }
+.tutorial-card .btn-primary {
+  background: linear-gradient(135deg, #22d3ee, #a855f7);
+  color: #0a0f1e;
+}
+.tutorial-card .btn-secondary {
+  background: transparent;
+  border: 1px solid #334155;
+  color: #cbd5e1;
+}
+
+.tutorial-progress {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.tutorial-progress span {
+  flex: 1;
+  height: 4px;
+  background: #334155;
+  border-radius: 2px;
+  transition: background 0.3s;
+}
+.tutorial-progress span.active { background: #22d3ee; }
+
+.type-matrix {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 12px 0;
+}
+.type-matrix div {
+  text-align: center;
+  padding: 8px 4px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  border: 1px solid #334155;
+  background: #0d1424;
+}
+.type-matrix .grass { color: var(--type-grass); border-color: var(--type-grass); }
+.type-matrix .fire  { color: var(--type-fire);  border-color: var(--type-fire); }
+.type-matrix .water { color: var(--type-water); border-color: var(--type-water); }
+
+/* =====================================================================
+   MODE TOGGLE
+   ===================================================================== */
+.mode-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+.mode-toggle {
+  display: inline-flex;
+  border: 1px solid #2a3550;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.mode-toggle button {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 4px 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+.mode-toggle button.active {
+  background: #22d3ee;
+  color: #0a0f1e;
+  font-weight: 700;
+}
+.mode-toggle button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.help-trigger {
+  background: transparent;
+  border: 1px solid #2a3550;
+  color: #94a3b8;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.65rem;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+.help-trigger:hover { background: #1a2540; color: #22d3ee; }
+
+footer {
+  margin-top: 18px;
+  font-size: 0.6rem;
+  color: #64748b;
+  letter-spacing: 1px;
+  font-family: 'Courier New', monospace;
+}
+footer a { color: #22d3ee; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<h1>⚡ PokéCode Battle ⚡</h1>
+<div class="subtitle">Unisanta · Feira de Profissões · Workshop de Programação</div>
+
+<!-- Tutorial overlay -->
+<div id="tutorialOverlay" class="tutorial-overlay">
+  <div class="tutorial-card">
+    <div class="tutorial-progress" id="tutProgress">
+      <span class="active"></span><span></span><span></span><span></span>
+    </div>
+    <div class="step" id="tutStep">Passo 1 de 4</div>
+    <h2 id="tutTitle">Bem-vindo ao PokéCode!</h2>
+    <div id="tutBody">
+      <p>
+        Você está prestes a entrar em uma batalha Pokémon controlada por
+        <span class="highlight">comandos de texto</span>, igualzinho a um
+        programador faz no terminal.
+      </p>
+      <p>
+        Não tem mistério: você digita uma palavra, aperta <code>Enter</code>
+        e a coisa acontece. Vamos ver como.
+      </p>
+    </div>
+    <div class="tutorial-actions">
+      <button class="btn-secondary" id="tutSkip">Pular tutorial</button>
+      <button class="btn-primary" id="tutNext">Próximo →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Game Boy -->
+<div class="gameboy">
+  <div class="screen-bezel">
+
+    <div class="battle-arena" id="battleArena">
+      <div class="platform-enemy"></div>
+      <div class="platform-player"></div>
+
+      <canvas class="sprite sprite-enemy"  id="spriteEnemy"  width="84"  height="84"></canvas>
+      <canvas class="sprite sprite-player" id="spritePlayer" width="100" height="100"></canvas>
+
+      <div class="status-enemy" id="statusEnemy">
+        <div class="status-name">
+          <span><span id="enemyName">???</span><span class="type-chip" id="enemyType"></span></span>
+          <span class="status-level" id="enemyLevel">Lv5</span>
+        </div>
+        <div class="hp-bar-wrap"><div class="hp-bar" id="enemyHPBar" style="width:100%"></div></div>
+        <div class="hp-label">HP</div>
+      </div>
+
+      <div class="status-player" id="statusPlayer">
+        <div class="status-name">
+          <span><span id="playerName">???</span><span class="type-chip" id="playerType"></span></span>
+          <span class="status-level" id="playerLevel">Lv5</span>
+        </div>
+        <div class="hp-bar-wrap"><div class="hp-bar" id="playerHPBar" style="width:100%"></div></div>
+        <div class="hp-label">HP</div>
+        <div class="hp-value" id="playerHPVal">—</div>
+      </div>
+    </div>
+
+    <div class="dialog-box">
+      <p id="dialogMsg">Bem-vindo ao PokéCode! Digite no terminal abaixo.<span class="dialog-cursor"></span></p>
+    </div>
+
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:0 10px;">
+    <div style="display:flex;gap:6px;">
+      <div style="width:36px;height:36px;background:#c02020;border-radius:50%;border:3px solid #901010;box-shadow:0 3px 0 #600;"></div>
+      <div style="width:36px;height:36px;background:#c02020;border-radius:50%;border:3px solid #901010;box-shadow:0 3px 0 #600;margin-top:8px;"></div>
+    </div>
+    <div style="font-size:0.5rem;color:#888;letter-spacing:2px;text-transform:uppercase;">PokéCode v2.0</div>
+    <div style="width:50px;height:16px;background:#808080;border-radius:3px;border:2px solid #505050;"></div>
+  </div>
+</div>
+
+<!-- Terminal & ajuda -->
+<div style="width:540px;max-width:100%;">
+
+  <div class="mode-row">
+    <span>Modo:</span>
+    <div class="mode-toggle" role="radiogroup" aria-label="Modo de jogo">
+      <button id="mode1P" class="active" type="button">1 jogador (vs CPU)</button>
+      <button id="mode2P" type="button">2 jogadores</button>
+    </div>
+    <button class="help-trigger" id="openHelp" type="button">? Tutorial</button>
+  </div>
+
+  <div class="turn-label" id="turnLabel">aguardando início...</div>
+  <div class="choose-phase" id="choosePhase"></div>
+
+  <div class="terminal-section">
+    <div class="terminal-log" id="termLog"></div>
+    <div class="terminal-input-row">
+      <span class="prompt-indicator" id="promptIndicator">P1 $&gt;</span>
+      <input id="cmdInput" type="text" autocomplete="off" spellcheck="false"
+             placeholder="Digite um comando e pressione Enter...">
+    </div>
+  </div>
+
+  <div class="help-panel" id="helpPanel">
+    <span style="color:#506080;font-size:0.65rem;align-self:center;">Atalhos:</span>
+    <button class="attack-btn" id="btn1" disabled>attack 1</button>
+    <button class="attack-btn" id="btn2" disabled>attack 2</button>
+    <button class="attack-btn" id="btn3" disabled>attack 3</button>
+    <button class="attack-btn danger" id="btnRestart" type="button">⟳ Reiniciar</button>
+  </div>
+
+  <div class="cheatsheet" id="cheatsheet">
+    <h4>📖 Comandos rápidos</h4>
+    <ul>
+      <li>Para escolher um Pokémon: <code>choose Bulbasaur</code> (ou Charmander/Squirtle)</li>
+      <li>Para atacar: <code>attack 1</code>, <code>attack 2</code> ou <code>attack 3</code></li>
+      <li>Mostrar status: <code>status</code> · Listar comandos: <code>help</code></li>
+      <li>Tipos: <span style="color:var(--type-grass)">planta</span> &gt; água &gt; fogo &gt; planta (vantagem 1.5×)</li>
+    </ul>
+  </div>
+
+</div>
+
+<footer>
+  PokéCode v2.0 · Aluno(a)s do curso de
+  <a href="https://www.unisanta.br" target="_blank" rel="noopener">Unisanta</a>
+  · MIT License
+</footer>
+
+<script>
+'use strict';
+
+/* =====================================================================
+   POKÉDEX — dados de cada Pokémon disponível
+   ===================================================================== */
+const POKEDEX = {
+  Bulbasaur: {
+    name: 'Bulbasaur', type: 'grass', typeLabel: 'Planta',
+    maxHP: 100, color: '#60a860', color2: '#408040',
+    attacks: [
+      { name: 'Razor Leaf', damage: 12, cmd: 'attack 1', type: 'grass' },
+      { name: 'Vine Whip',  damage: 18, cmd: 'attack 2', type: 'grass' },
+      { name: 'Solar Beam', damage: 28, cmd: 'attack 3', type: 'grass' },
+    ],
+  },
+  Charmander: {
+    name: 'Charmander', type: 'fire', typeLabel: 'Fogo',
+    maxHP: 95, color: '#e87030', color2: '#c05010',
+    attacks: [
+      { name: 'Scratch',      damage: 12, cmd: 'attack 1', type: 'fire' },
+      { name: 'Ember',        damage: 18, cmd: 'attack 2', type: 'fire' },
+      { name: 'Flamethrower', damage: 28, cmd: 'attack 3', type: 'fire' },
+    ],
+  },
+  Squirtle: {
+    name: 'Squirtle', type: 'water', typeLabel: 'Água',
+    maxHP: 105, color: '#4090d8', color2: '#2070b0',
+    attacks: [
+      { name: 'Tackle',     damage: 12, cmd: 'attack 1', type: 'water' },
+      { name: 'Water Gun',  damage: 18, cmd: 'attack 2', type: 'water' },
+      { name: 'Hydro Pump', damage: 28, cmd: 'attack 3', type: 'water' },
+    ],
+  },
+};
+
+/* =====================================================================
+   TABELA DE TIPOS (clássica): planta > água > fogo > planta
+   ===================================================================== */
+const TYPE_CHART = {
+  grass: { strongAgainst: 'water', weakAgainst: 'fire' },
+  fire:  { strongAgainst: 'grass', weakAgainst: 'water' },
+  water: { strongAgainst: 'fire',  weakAgainst: 'grass' },
+};
+
+function damageMultiplier(attackType, defenderType) {
+  if (TYPE_CHART[attackType].strongAgainst === defenderType) return 1.5;
+  if (TYPE_CHART[attackType].weakAgainst   === defenderType) return 0.75;
+  return 1.0;
+}
+
+/* =====================================================================
+   ESTADO GLOBAL
+   ===================================================================== */
+let gameState = {
+  phase: 'choose',     // 'choose' | 'battle' | 'over'
+  mode:  '1P',         // '1P' = vs CPU; '2P' = humano vs humano
+  choosingPlayer: 1,
+  chosen: {},
+  currentTurn: 1,
+  busy: false,
+};
+
+/* =====================================================================
+   LOG / DIÁLOGO
+   ===================================================================== */
+function log(msg, cls = 'system') {
+  const elt = document.getElementById('termLog');
+  const line = document.createElement('div');
+  line.className = `log-line ${cls}`;
+  line.textContent = msg;
+  elt.appendChild(line);
+  elt.scrollTop = elt.scrollHeight;
+}
+function setDialog(msg) {
+  document.getElementById('dialogMsg').innerHTML =
+    msg + '<span class="dialog-cursor"></span>';
+}
+
+/* =====================================================================
+   PIXEL ART — sprites mais distintos (grade 9x9)
+   ===================================================================== */
+function drawSprite(canvas, color1, color2, name) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  const P = Math.floor(W / 11);
+
+  // 0 vazio · 1 cor · 2 sombra · 3 preto · 4 branco · 5 chama · 6 azul claro
+  const sprites = {
+    Bulbasaur: [
+      [0,0,0,2,2,2,0,0,0],
+      [0,0,2,1,1,1,2,0,0],
+      [0,2,1,1,1,1,1,2,0],
+      [2,1,3,4,1,4,3,1,2],
+      [2,1,1,1,1,1,1,1,2],
+      [0,2,1,1,1,1,1,2,0],
+      [0,0,2,1,1,1,2,0,0],
+      [0,2,0,0,3,0,0,2,0],
+      [2,2,0,0,0,0,0,2,2],
+    ],
+    Charmander: [
+      [0,0,0,0,0,0,5,5,0],
+      [0,0,0,0,0,5,5,0,0],
+      [0,0,1,1,1,1,0,0,0],
+      [0,1,3,4,1,4,3,1,0],
+      [0,1,1,1,1,1,1,1,0],
+      [0,2,1,1,1,1,1,2,0],
+      [0,0,2,1,1,1,2,0,0],
+      [0,0,1,0,0,0,1,0,0],
+      [0,2,2,0,0,0,2,2,0],
+    ],
+    Squirtle: [
+      [0,0,0,1,1,1,0,0,0],
+      [0,0,1,1,2,1,1,0,0],
+      [0,1,1,3,2,3,1,1,0],
+      [0,1,2,2,2,2,2,1,0],
+      [1,1,2,2,2,2,2,1,1],
+      [1,2,1,1,1,1,1,2,1],
+      [0,1,2,2,2,2,2,1,0],
+      [0,0,1,0,0,0,1,0,0],
+      [0,2,2,0,0,0,2,2,0],
+    ],
+  };
+  const colorMap = {
+    0:null, 1:color1, 2:color2, 3:'#181818', 4:'#ffffff',
+    5:'#ffae42', 6:'#aee0ff',
+  };
+  const grid = sprites[name] || sprites['Squirtle'];
+  const offsetX = Math.floor((W - 9 * P) / 2);
+  const offsetY = Math.floor((H - 9 * P) / 2);
+  grid.forEach((row, ry) => {
+    row.forEach((cell, rx) => {
+      if (cell === 0) return;
+      ctx.fillStyle = colorMap[cell];
+      ctx.fillRect(offsetX + rx * P, offsetY + ry * P, P, P);
+    });
+  });
+}
+
+/* =====================================================================
+   UI — barras, hit, chips
+   ===================================================================== */
+function updateHPBar(barId, hp, maxHP) {
+  const bar = document.getElementById(barId);
+  const pct = Math.max(0, (hp / maxHP) * 100);
+  bar.style.width = pct + '%';
+  if (pct > 50)      bar.style.background = 'var(--hp-green)';
+  else if (pct > 20) bar.style.background = 'var(--hp-yellow)';
+  else               bar.style.background = 'var(--hp-red)';
+}
+function animateHit(spriteId) {
+  const el = document.getElementById(spriteId);
+  el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit');
+  el.addEventListener('animationend', () => el.classList.remove('hit'), { once: true });
+}
+function setTypeChip(elId, type, label) {
+  const el = document.getElementById(elId);
+  if (!type) { el.className = 'type-chip'; el.textContent = ''; return; }
+  el.className = 'type-chip ' + type;
+  el.textContent = label;
+}
+
+/* =====================================================================
+   BATALHA — setup
+   ===================================================================== */
+function setupBattleScreen() {
+  const p1 = gameState.chosen[1], p2 = gameState.chosen[2];
+  document.getElementById('enemyName').textContent  = p2.name;
+  document.getElementById('playerName').textContent = p1.name;
+  document.getElementById('enemyLevel').textContent  = 'Lv5';
+  document.getElementById('playerLevel').textContent = 'Lv5';
+  setTypeChip('enemyType',  p2.type, p2.typeLabel);
+  setTypeChip('playerType', p1.type, p1.typeLabel);
+  drawSprite(document.getElementById('spriteEnemy'),  p2.color, p2.color2, p2.name);
+  drawSprite(document.getElementById('spritePlayer'), p1.color, p1.color2, p1.name);
+  updateHPBar('enemyHPBar',  p2.hp, p2.maxHP);
+  updateHPBar('playerHPBar', p1.hp, p1.maxHP);
+  document.getElementById('playerHPVal').textContent = `${p1.hp}/${p1.maxHP}`;
+}
+
+function switchTurn() {
+  gameState.currentTurn = gameState.currentTurn === 1 ? 2 : 1;
+  updateTurnUI();
+  if (gameState.mode === '1P' && gameState.currentTurn === 2 && gameState.phase === 'battle') {
+    setTimeout(cpuTurn, 850);
+  }
+}
+
+function updateTurnUI() {
+  const t = gameState.currentTurn;
+  const isCpu = gameState.mode === '1P' && t === 2;
+  document.getElementById('turnLabel').textContent =
+    isCpu ? '🤖 Vez do CPU' : `⚔️  Turno do Jogador ${t}`;
+  document.getElementById('promptIndicator').textContent = isCpu ? 'CPU $>' : `P${t} $>`;
+  setDialog(isCpu
+    ? 'CPU está pensando…'
+    : `Vez do Jogador ${t}! Use 'attack 1', '2' ou '3'.`);
+  updateAttackButtons();
+}
+
+function updateAttackButtons() {
+  const t = gameState.currentTurn;
+  const pk = gameState.chosen[t];
+  if (!pk) return;
+  const cpu = gameState.mode === '1P' && t === 2;
+  ['btn1','btn2','btn3'].forEach((id, i) => {
+    const btn = document.getElementById(id);
+    const atk = pk.attacks[i];
+    btn.disabled = (gameState.phase !== 'battle') || cpu;
+    btn.textContent = `attack ${i+1}: ${atk.name} (${atk.damage} base)`;
+    btn.title = `Tipo: ${pk.typeLabel} · Dano base ${atk.damage}`;
+    btn.onclick = () => processCommand(`attack ${i+1}`);
+  });
+}
+
+/* =====================================================================
+   ESCOLHA
+   ===================================================================== */
+function choosePokemon(pokeName) {
+  const normalized = pokeName.charAt(0).toUpperCase() + pokeName.slice(1).toLowerCase();
+  if (!POKEDEX[normalized]) {
+    log(`❌ "${pokeName}" não é válido. Escolha: Bulbasaur, Charmander ou Squirtle.`, 'error');
+    return false;
+  }
+  if (Object.values(gameState.chosen).find(p => p.name === normalized)) {
+    log(`❌ ${normalized} já foi escolhido. Pegue outro.`, 'error');
+    return false;
+  }
+  const base = POKEDEX[normalized];
+  gameState.chosen[gameState.choosingPlayer] = {
+    ...base,
+    attacks: base.attacks.map(a => ({ ...a })),
+    hp: base.maxHP,
+  };
+  log(`✅ Jogador ${gameState.choosingPlayer} escolheu ${normalized} (${base.typeLabel}).`, 'info');
+  return true;
+}
+
+function chooseCpuPokemon() {
+  const playerPoke = gameState.chosen[1];
+  const remaining = Object.keys(POKEDEX).filter(k => k !== playerPoke.name);
+  const advantage = remaining.find(k => damageMultiplier(POKEDEX[k].type, playerPoke.type) > 1);
+  const pick = advantage || remaining[Math.floor(Math.random() * remaining.length)];
+  log(`🤖 CPU escolheu ${pick}.`, 'info');
+  const base = POKEDEX[pick];
+  gameState.chosen[2] = {
+    ...base,
+    attacks: base.attacks.map(a => ({ ...a })),
+    hp: base.maxHP,
+  };
+}
+
+/* =====================================================================
+   ATAQUE
+   ===================================================================== */
+function performAttack(atkIndex) {
+  const attacker = gameState.chosen[gameState.currentTurn];
+  const defKey   = gameState.currentTurn === 1 ? 2 : 1;
+  const defender = gameState.chosen[defKey];
+
+  const attack = attacker.attacks[atkIndex - 1];
+  if (!attack) {
+    log(`❌ Use 'attack 1', 'attack 2' ou 'attack 3'.`, 'error');
+    return;
+  }
+
+  const mult = damageMultiplier(attack.type, defender.type);
+  const finalDamage = Math.round(attack.damage * mult);
+  defender.hp = Math.max(0, defender.hp - finalDamage);
+
+  const attackerLabel = (gameState.mode === '1P' && gameState.currentTurn === 2)
+    ? 'CPU' : `Jogador ${gameState.currentTurn}`;
+  log(`⚡ ${attackerLabel} usou ${attack.name}!`, 'damage');
+  if (mult > 1)      log(`💥 Super eficaz! (${attack.damage} × ${mult} = ${finalDamage})`, 'tip');
+  else if (mult < 1) log(`🛡 Pouco eficaz (${attack.damage} × ${mult} = ${finalDamage}).`, 'tip');
+  else                log(`   Dano: ${finalDamage}.`, 'system');
+  setDialog(`${attacker.name} usou ${attack.name}!\n${defender.name} perdeu ${finalDamage} HP.`);
+
+  const defSprite = defKey === 1 ? 'spritePlayer' : 'spriteEnemy';
+  const defHPBar  = defKey === 1 ? 'playerHPBar'  : 'enemyHPBar';
+
+  gameState.busy = true;
+  document.getElementById('cmdInput').disabled = true;
+  animateHit(defSprite);
+
+  setTimeout(() => {
+    updateHPBar(defHPBar, defender.hp, defender.maxHP);
+    if (defKey === 1) {
+      document.getElementById('playerHPVal').textContent =
+        `${gameState.chosen[1].hp}/${gameState.chosen[1].maxHP}`;
+    }
+    log(`💙 ${defender.name} HP: ${defender.hp}/${defender.maxHP}`, 'info');
+
+    if (defender.hp <= 0) {
+      endGame(gameState.currentTurn);
+    } else {
+      switchTurn();
+      gameState.busy = false;
+      document.getElementById('cmdInput').disabled = false;
+      document.getElementById('cmdInput').focus();
+    }
+  }, 500);
+}
+
+/* =====================================================================
+   IA SIMPLES
+   ===================================================================== */
+function cpuTurn() {
+  if (gameState.phase !== 'battle' || gameState.currentTurn !== 2) return;
+  const cpu = gameState.chosen[2];
+  const player = gameState.chosen[1];
+  let chosen;
+  if (Math.random() < 0.3) {
+    chosen = Math.floor(Math.random() * 3) + 1;
+  } else {
+    let best = 0, bestIdx = 1;
+    cpu.attacks.forEach((atk, i) => {
+      const eff = atk.damage * damageMultiplier(atk.type, player.type);
+      if (eff > best) { best = eff; bestIdx = i + 1; }
+    });
+    chosen = bestIdx;
+  }
+  log(`🤖 CPU está atacando…`, 'info');
+  setTimeout(() => performAttack(chosen), 400);
+}
+
+/* =====================================================================
+   FIM
+   ===================================================================== */
+function endGame(winner) {
+  gameState.phase = 'over'; gameState.busy = false;
+  const loserKey = winner === 1 ? 2 : 1;
+  const loser = gameState.chosen[loserKey];
+  const loserCanvas = loserKey === 1 ? 'spritePlayer' : 'spriteEnemy';
+  document.getElementById(loserCanvas).getContext('2d').clearRect(0, 0, 200, 200);
+  log('', 'system');
+  const winnerLabel = (gameState.mode === '1P' && winner === 2) ? '🤖 CPU' : `🏆 JOGADOR ${winner}`;
+  log(`🏆🏆🏆 ${winnerLabel} VENCEU! 🏆🏆🏆`, 'win');
+  log(`${loser.name} foi derrotado.`, 'warn');
+  log('Clique em "⟳ Reiniciar" para jogar de novo.', 'tip');
+  setDialog(`${winnerLabel} venceu a batalha!`);
+  document.getElementById('turnLabel').textContent = `🏆 ${winnerLabel} é o campeão!`;
+  document.getElementById('cmdInput').disabled = true;
+  ['btn1','btn2','btn3'].forEach(id => document.getElementById(id).disabled = true);
+}
+
+/* =====================================================================
+   COMANDOS
+   ===================================================================== */
+function processCommand(rawInput) {
+  if (gameState.busy) return;
+  const input = rawInput.trim().toLowerCase();
+  if (!input) return;
+  log(`P${gameState.choosingPlayer || gameState.currentTurn} > ${rawInput}`, 'system');
+
+  if (input === 'help' || input === '?' || input === 'ajuda') { showHelpInLog(); return; }
+  if (input === 'status') { showStatusInLog(); return; }
+
+  if (gameState.phase === 'choose') {
+    if (!input.startsWith('choose ')) {
+      const available = Object.keys(POKEDEX)
+        .filter(p => !Object.values(gameState.chosen).find(c => c.name === p)).join(', ');
+      log(`❌ Use: choose <Nome>. Disponíveis: ${available}`, 'error');
+      log(`   💡 Exemplo: choose Charmander`, 'tip');
+      return;
+    }
+    const pokeName = rawInput.trim().split(' ').slice(1).join(' ');
+    if (!choosePokemon(pokeName)) return;
+
+    if (gameState.choosingPlayer === 1 && gameState.mode === '1P') {
+      chooseCpuPokemon();
+      gameState.choosingPlayer = null;
+      startBattle();
+    } else if (gameState.choosingPlayer === 1) {
+      gameState.choosingPlayer = 2;
+      const remaining = Object.keys(POKEDEX)
+        .filter(p => p !== gameState.chosen[1].name).join(' ou ');
+      log(`🎮 Jogador 2, sua vez! Restam: ${remaining}`, 'info');
+      setDialog(`Jogador 2, escolha seu Pokémon!\n(${remaining})`);
+      document.getElementById('promptIndicator').textContent = 'P2 $>';
+      document.getElementById('choosePhase').textContent =
+        `🎮 Jogador 2 — escolha: choose Bulbasaur / Charmander / Squirtle`;
+    } else {
+      gameState.choosingPlayer = null;
+      startBattle();
+    }
+    return;
+  }
+
+  if (gameState.phase === 'battle') {
+    if (gameState.mode === '1P' && gameState.currentTurn !== 1) {
+      log(`⏳ Aguarde — é a vez do CPU.`, 'warn');
+      return;
+    }
+    if (!input.startsWith('attack')) {
+      log(`❌ Use: attack 1, attack 2 ou attack 3`, 'error');
+      log(`   💡 Ataques de tipo forte fazem 1.5× de dano!`, 'tip');
+      return;
+    }
+    const parts = input.split(/\s+/);
+    const atkNum = parseInt(parts[1]);
+    if (isNaN(atkNum) || atkNum < 1 || atkNum > 3) {
+      log(`❌ Número inválido. Use 1, 2 ou 3.`, 'error');
+      return;
+    }
+    performAttack(atkNum);
+    return;
+  }
+
+  if (gameState.phase === 'over') {
+    log(`⚠️  Jogo encerrado. Clique em "⟳ Reiniciar".`, 'warn');
+  }
+}
+
+function startBattle() {
+  gameState.phase = 'battle';
+  document.getElementById('choosePhase').textContent = '';
+  const dice1 = Math.floor(Math.random() * 6) + 1;
+  const dice2 = Math.floor(Math.random() * 6) + 1;
+  const starter = dice1 >= dice2 ? 1 : 2;
+  log('', 'system');
+  log(`🎲 Rolando dados...`, 'info');
+  log(`   P1: ${dice1} | P2: ${dice2} → começa: ${starter}`, 'info');
+  gameState.currentTurn = starter;
+  setupBattleScreen();
+  updateTurnUI();
+  log('', 'system');
+  log(`⚔️  BATALHA INICIADA!`, 'win');
+  log(`Comandos: attack 1, attack 2, attack 3 · Digite 'help' a qualquer momento.`, 'info');
+  if (gameState.mode === '1P' && gameState.currentTurn === 2) {
+    setTimeout(cpuTurn, 1000);
+  }
+}
+
+function showHelpInLog() {
+  log('📖 Comandos:', 'info');
+  if (gameState.phase === 'choose') {
+    log('   choose <Nome> — escolhe um Pokémon (Bulbasaur, Charmander, Squirtle)', 'system');
+  } else {
+    log('   attack 1 / 2 / 3 — usa um dos três ataques', 'system');
+    log('   status — mostra HP atual de ambos', 'system');
+  }
+  log('   help / ajuda — mostra esta lista', 'system');
+  log('💡 Tipos: planta > água > fogo > planta (1.5×)', 'tip');
+}
+function showStatusInLog() {
+  if (gameState.phase === 'choose') { log('Status: ainda escolhendo Pokémon.', 'info'); return; }
+  const p1 = gameState.chosen[1], p2 = gameState.chosen[2];
+  log(`📊 P1: ${p1.name} (${p1.typeLabel}) — ${p1.hp}/${p1.maxHP} HP`, 'info');
+  log(`📊 P2: ${p2.name} (${p2.typeLabel}) — ${p2.hp}/${p2.maxHP} HP`, 'info');
+}
+
+/* =====================================================================
+   RESTART
+   ===================================================================== */
+function restartGame() {
+  document.getElementById('termLog').innerHTML = '';
+  gameState = {
+    phase: 'choose',
+    mode: gameState.mode,
+    choosingPlayer: 1,
+    chosen: {},
+    currentTurn: 1,
+    busy: false,
+  };
+  ['spriteEnemy','spritePlayer'].forEach(id => {
+    const c = document.getElementById(id);
+    c.getContext('2d').clearRect(0, 0, c.width, c.height);
+  });
+  document.getElementById('enemyName').textContent  = '???';
+  document.getElementById('playerName').textContent = '???';
+  setTypeChip('enemyType', null);
+  setTypeChip('playerType', null);
+  document.getElementById('enemyHPBar').style.width  = '100%';
+  document.getElementById('playerHPBar').style.width = '100%';
+  document.getElementById('playerHPVal').textContent = '—';
+  document.getElementById('turnLabel').textContent   = 'aguardando início...';
+  document.getElementById('choosePhase').textContent = '';
+  ['btn1','btn2','btn3'].forEach(id => {
+    const btn = document.getElementById(id);
+    btn.disabled = true;
+    btn.textContent = `attack ${id.replace('btn','')}`;
+    btn.onclick = null;
+  });
+  document.getElementById('promptIndicator').textContent = 'P1 $>';
+  document.getElementById('cmdInput').disabled = false;
+  document.getElementById('cmdInput').value = '';
+  document.getElementById('cmdInput').focus();
+  setDialog(`Bem-vindo ao PokéCode! Digite no terminal abaixo.`);
+  startGame();
+}
+
+/* =====================================================================
+   START
+   ===================================================================== */
+function startGame() {
+  log('╔══════════════════════════════╗', 'win');
+  log('║   PokéCode — Batalha EDU     ║', 'win');
+  log('╚══════════════════════════════╝', 'win');
+  log('', 'system');
+  if (gameState.mode === '1P') {
+    log('🎮 Modo: 1 jogador (você vs CPU)', 'info');
+    log('Digite o nome do seu Pokémon, ex: choose Bulbasaur', 'system');
+    setDialog('Você vs CPU.\nDigite: choose Bulbasaur / Charmander / Squirtle');
+  } else {
+    log('🎮 Modo: 2 jogadores', 'info');
+    log('🎮 Jogador 1, escolha seu Pokémon!', 'system');
+    setDialog('Jogador 1, escolha seu Pokémon!\nDigite: choose Bulbasaur / Charmander / Squirtle');
+  }
+  document.getElementById('choosePhase').textContent =
+    '🎮 Jogador 1 — escolha: choose Bulbasaur / Charmander / Squirtle';
+  log('Digite "help" se precisar de ajuda.', 'tip');
+}
+
+/* =====================================================================
+   TUTORIAL
+   ===================================================================== */
+const TUTORIAL_STEPS = [
+  {
+    title: 'Bem-vindo ao PokéCode!',
+    body: `
+      <p>Você está prestes a entrar em uma batalha Pokémon controlada por
+      <span class="highlight">comandos de texto</span>, igualzinho a um
+      programador faz no terminal.</p>
+      <p>Não tem mistério: você digita uma palavra, aperta <code>Enter</code>
+      e a coisa acontece. Vamos ver como.</p>
+    `,
+  },
+  {
+    title: 'Passo 1 — Escolha seu Pokémon',
+    body: `
+      <p>Para começar, digite <code>choose Bulbasaur</code> no terminal e
+      aperte <code>Enter</code>.</p>
+      <p>Você pode trocar Bulbasaur por <code>Charmander</code> ou
+      <code>Squirtle</code>. Cada um tem um <span class="highlight">tipo</span>:</p>
+      <div class="type-matrix">
+        <div class="grass">🌱 Bulbasaur<br>Planta</div>
+        <div class="fire">🔥 Charmander<br>Fogo</div>
+        <div class="water">💧 Squirtle<br>Água</div>
+      </div>
+      <p style="font-size:0.8rem;color:#94a3b8">
+        ⚙️ Por trás dos panos, esse <code>choose</code> é uma função JS
+        <code>choosePokemon("Bulbasaur")</code> que valida o nome e cria
+        um objeto na memória com HP, ataques e tipo.
+      </p>
+    `,
+  },
+  {
+    title: 'Passo 2 — Atacar',
+    body: `
+      <p>Quando começar a batalha, digite um destes três comandos:</p>
+      <p>
+        <code>attack 1</code> &nbsp;·&nbsp;
+        <code>attack 2</code> &nbsp;·&nbsp;
+        <code>attack 3</code>
+      </p>
+      <p>Cada Pokémon tem 3 ataques diferentes — o número 3 é o mais forte.
+      (Você também pode clicar nos botões de atalho abaixo do terminal.)</p>
+      <p style="font-size:0.8rem;color:#94a3b8">
+        🐍 Em programação isso é literalmente um <code>switch</code>:
+        leemos o número, escolhemos a função e executamos.
+      </p>
+    `,
+  },
+  {
+    title: 'Passo 3 — Vantagem de tipo',
+    body: `
+      <p>Igual ao Pokémon original: <span class="highlight">tipo importa</span>.</p>
+      <div class="type-matrix">
+        <div class="grass">🌱 Planta<br>vence Água</div>
+        <div class="fire">🔥 Fogo<br>vence Planta</div>
+        <div class="water">💧 Água<br>vence Fogo</div>
+      </div>
+      <p>Atacando um tipo "fraco contra você" → dano <span class="highlight">1.5×</span>.
+      Atacando um tipo "forte contra você" → dano <span class="highlight">0.75×</span>.</p>
+      <p style="font-size:0.8rem;color:#94a3b8">
+        Isto é um simples <code>if/else</code> dentro da função
+        <code>damageMultiplier()</code> no código-fonte.
+      </p>
+    `,
+  },
+];
+
+let tutStepIdx = 0;
+function renderTutorialStep() {
+  const step = TUTORIAL_STEPS[tutStepIdx];
+  document.getElementById('tutTitle').textContent = step.title;
+  document.getElementById('tutBody').innerHTML    = step.body;
+  document.getElementById('tutStep').textContent  =
+    `Passo ${tutStepIdx + 1} de ${TUTORIAL_STEPS.length}`;
+  document.querySelectorAll('#tutProgress span')
+    .forEach((d, i) => d.classList.toggle('active', i <= tutStepIdx));
+  document.getElementById('tutNext').textContent =
+    (tutStepIdx === TUTORIAL_STEPS.length - 1) ? 'Começar!' : 'Próximo →';
+}
+function openTutorial() {
+  tutStepIdx = 0;
+  renderTutorialStep();
+  document.getElementById('tutorialOverlay').classList.remove('hidden');
+}
+function closeTutorial() {
+  document.getElementById('tutorialOverlay').classList.add('hidden');
+  document.getElementById('cmdInput').focus();
+  try { localStorage.setItem('pokecode_tutorial_seen_v2', '1'); } catch(_) {}
+}
+
+/* =====================================================================
+   EVENT LISTENERS
+   ===================================================================== */
+document.getElementById('cmdInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    const val = this.value;
+    this.value = '';
+    processCommand(val);
+  }
+});
+document.getElementById('btnRestart').addEventListener('click', restartGame);
+
+document.getElementById('mode1P').addEventListener('click', () => {
+  if (gameState.phase !== 'choose' || Object.keys(gameState.chosen).length > 0) {
+    log('⚠️ Reinicie o jogo para trocar de modo.', 'warn'); return;
+  }
+  gameState.mode = '1P';
+  document.getElementById('mode1P').classList.add('active');
+  document.getElementById('mode2P').classList.remove('active');
+  restartGame();
+});
+document.getElementById('mode2P').addEventListener('click', () => {
+  if (gameState.phase !== 'choose' || Object.keys(gameState.chosen).length > 0) {
+    log('⚠️ Reinicie o jogo para trocar de modo.', 'warn'); return;
+  }
+  gameState.mode = '2P';
+  document.getElementById('mode2P').classList.add('active');
+  document.getElementById('mode1P').classList.remove('active');
+  restartGame();
+});
+document.getElementById('openHelp').addEventListener('click', openTutorial);
+document.getElementById('tutNext').addEventListener('click', () => {
+  if (tutStepIdx < TUTORIAL_STEPS.length - 1) {
+    tutStepIdx++;
+    renderTutorialStep();
+  } else {
+    closeTutorial();
+  }
+});
+document.getElementById('tutSkip').addEventListener('click', closeTutorial);
+
+// Tutorial é mostrado apenas na primeira visita (persistido em localStorage)
+try {
+  if (localStorage.getItem('pokecode_tutorial_seen_v2')) {
+    document.getElementById('tutorialOverlay').classList.add('hidden');
+  }
+} catch (_) { /* localStorage indisponível */ }
+
+startGame();
+</script>
+</body>
+</html>

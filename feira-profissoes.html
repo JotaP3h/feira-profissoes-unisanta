@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TechFair — Feira de Profissões</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f172a;
+    --bg2: #1e293b;
+    --bg3: #0a0f1e;
+    --cyan: #22d3ee;
+    --cyan2: #06b6d4;
+    --purple: #a855f7;
+    --purple2: #7c3aed;
+    --pink: #ec4899;
+    --green: #4ade80;
+    --yellow: #facc15;
+    --red: #f87171;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --border: rgba(34,211,238,0.15);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  html, body, #root { height: 100%; }
+  body { background: var(--bg3); color: var(--text); font-family: 'Syne', sans-serif; overflow-x: hidden; }
+  * { scrollbar-width: thin; scrollbar-color: var(--cyan2) var(--bg2); }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg2); }
+  ::-webkit-scrollbar-thumb { background: var(--cyan2); border-radius: 3px; }
+
+  /* Animations */
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+  @keyframes pulse-glow { 0%,100%{box-shadow:0 0 20px rgba(34,211,238,0.3)} 50%{box-shadow:0 0 40px rgba(34,211,238,0.7)} }
+  @keyframes scan { 0%{transform:translateY(-100%)} 100%{transform:translateY(100vh)} }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes slideIn { from{opacity:0;transform:translateX(-30px)} to{opacity:1;transform:translateX(0)} }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  @keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+  @keyframes ripple { 0%{transform:scale(1);opacity:0.8} 100%{transform:scale(3);opacity:0} }
+  @keyframes matrix-fall { 0%{opacity:1} 100%{opacity:0;transform:translateY(100px)} }
+  @keyframes glitch { 0%,100%{clip-path:inset(0 0 0 0)} 20%{clip-path:inset(10% 0 60% 0);transform:translateX(-3px)} 40%{clip-path:inset(50% 0 20% 0);transform:translateX(3px)} 60%{clip-path:inset(30% 0 40% 0);transform:translateX(-2px)} }
+
+  .fade-in { animation: fadeIn 0.5s ease forwards; }
+  .slide-in { animation: slideIn 0.4s ease forwards; }
+
+  /* Global components */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 20px; border-radius: var(--radius-sm);
+    font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.2s; text-decoration: none;
+  }
+  .btn-cyan {
+    background: linear-gradient(135deg, var(--cyan2), var(--purple2));
+    color: #fff; box-shadow: 0 0 20px rgba(34,211,238,0.3);
+  }
+  .btn-cyan:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(34,211,238,0.5); }
+  .btn-outline {
+    background: transparent; color: var(--cyan);
+    border: 1px solid var(--cyan); 
+  }
+  .btn-outline:hover { background: rgba(34,211,238,0.1); }
+  .btn-sm { padding: 6px 14px; font-size: 13px; }
+  .btn-lg { padding: 14px 32px; font-size: 16px; }
+
+  .card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+    transition: all 0.3s;
+  }
+  .card:hover { border-color: rgba(34,211,238,0.4); transform: translateY(-2px); }
+
+  .tag {
+    display: inline-flex; align-items: center;
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; font-family: 'Space Mono', monospace;
+    background: rgba(34,211,238,0.1); color: var(--cyan); border: 1px solid rgba(34,211,238,0.3);
+  }
+
+  .mono { font-family: 'Space Mono', monospace; }
+
+  /* Navbar */
+  .navbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(10,15,30,0.85); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 32px; height: 64px;
+  }
+  .navbar-logo {
+    font-size: 20px; font-weight: 800; background: linear-gradient(135deg, var(--cyan), var(--purple));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; cursor: pointer;
+  }
+  .navbar-user {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 30px; padding: 6px 14px; font-size: 13px; color: var(--cyan);
+  }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--cyan2), var(--purple2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #fff;
+  }
+
+  /* Grid backgrounds */
+  .grid-bg {
+    background-image: linear-gradient(rgba(34,211,238,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(34,211,238,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* Scanline effect */
+  .scanline::after {
+    content: ''; position: fixed; top: 0; left: 0; right: 0;
+    height: 2px; background: rgba(34,211,238,0.05);
+    animation: scan 8s linear infinite; pointer-events: none; z-index: 999;
+  }
+
+  /* Code highlight */
+  .code-block {
+    background: #0d1117; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 16px;
+    font-family: 'Space Mono', monospace; font-size: 13px;
+    line-height: 1.7; overflow-x: auto; position: relative;
+  }
+  .kw { color: #f92672; }
+  .fn { color: #66d9e8; }
+  .str { color: #a6e22e; }
+  .num { color: #ae81ff; }
+  .cm { color: #75715e; }
+  .op { color: #f8f8f2; }
+
+  /* Game shell */
+  .game-shell {
+    min-height: 100vh; padding-top: 64px;
+    display: flex; flex-direction: column;
+  }
+  .game-header {
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    padding: 16px 32px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .game-body { flex: 1; padding: 24px 32px; }
+  .score-badge {
+    background: rgba(250,204,21,0.1); border: 1px solid rgba(250,204,21,0.3);
+    border-radius: 20px; padding: 6px 14px;
+    font-family: 'Space Mono', monospace; font-size: 13px; color: var(--yellow);
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* Progress bar */
+  .progress-bar { height: 4px; background: var(--bg2); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--cyan2), var(--purple)); border-radius: 2px; transition: width 0.4s ease; }
+
+  /* Input */
+  .input-field {
+    width: 100%; background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px 16px;
+    color: var(--text); font-family: 'Space Mono', monospace; font-size: 14px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .input-field:focus { border-color: var(--cyan2); box-shadow: 0 0 0 2px rgba(34,211,238,0.1); }
+
+  /* Modal overlay */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center; z-index: 200;
+    backdrop-filter: blur(4px); animation: fadeIn 0.2s ease;
+  }
+  .modal {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 32px; max-width: 480px; width: 90%;
+    animation: fadeIn 0.3s ease;
+  }
+
+  /* Onboarding / tutorial — usado pelo modal de boas-vindas e pelos minigames */
+  .tutorial-step {
+    display: flex; gap: 14px; align-items: flex-start;
+    background: rgba(34,211,238,0.05); border: 1px solid rgba(34,211,238,0.2);
+    border-radius: var(--radius-sm); padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .tutorial-step .num {
+    flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--cyan), var(--purple));
+    color: #fff; font-weight: 800; font-family: 'Space Mono', monospace;
+    display: flex; align-items: center; justify-content: center; font-size: 13px;
+  }
+  .tutorial-step .body { flex: 1; }
+  .tutorial-step .body h4 { font-size: 14px; font-weight: 700; color: var(--cyan); margin-bottom: 4px; }
+  .tutorial-step .body p { font-size: 13px; color: var(--text2); line-height: 1.5; }
+
+  /* Banner inline com explicação de conceito dentro de cada minigame */
+  .concept-banner {
+    background: rgba(168,85,247,0.08); border: 1px solid rgba(168,85,247,0.25);
+    border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 16px;
+    font-size: 13px; color: var(--text); display: flex; gap: 10px; align-items: flex-start;
+  }
+  .concept-banner b { color: var(--purple); font-weight: 700; }
+
+  /* Footer global da TechFair */
+  .site-footer {
+    border-top: 1px solid var(--border); background: rgba(10,15,30,0.6);
+    padding: 28px 32px; text-align: center;
+    color: var(--text2); font-size: 13px;
+  }
+  .site-footer a { color: var(--cyan); text-decoration: none; }
+  .site-footer a:hover { text-decoration: underline; }
+  .site-footer .credit { font-family: 'Space Mono', monospace; font-size: 12px; margin-top: 6px; opacity: 0.7; }
+</style>
+</head>
+<body class="scanline">
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useContext, createContext, useRef, useCallback } = React;
+
+// =================== CONTEXT ===================
+const AppContext = createContext(null);
+
+function AppProvider({ children }) {
+  const [user, setUser] = useState(() => {
+    const saved = sessionStorage.getItem('techfair_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [page, setPage] = useState('home');
+  const [scores, setScores] = useState(() => {
+    const saved = sessionStorage.getItem('techfair_scores');
+    return saved ? JSON.parse(saved) : {};
+  });
+  // Tutorial — abre automaticamente na primeira visita (chave em localStorage).
+  // Visitantes seguintes podem reabrir pelo botão "Como funciona" da navbar.
+  const [showTutorial, setShowTutorial] = useState(() => {
+    try { return localStorage.getItem('techfair_tutorial_seen_v1') !== '1'; } catch { return true; }
+  });
+  const closeTutorial = () => {
+    try { localStorage.setItem('techfair_tutorial_seen_v1', '1'); } catch {}
+    setShowTutorial(false);
+  };
+  const openTutorial = () => setShowTutorial(true);
+
+  const login = (name) => {
+    const userData = { name, joinedAt: new Date().toISOString() };
+    sessionStorage.setItem('techfair_user', JSON.stringify(userData));
+    setUser(userData);
+    setPage('hub');
+  };
+
+  const logout = () => {
+    sessionStorage.clear();
+    setUser(null);
+    setScores({});
+    setPage('home');
+  };
+
+  const addScore = (game, pts) => {
+    const newScores = { ...scores, [game]: Math.max(scores[game] || 0, pts) };
+    sessionStorage.setItem('techfair_scores', JSON.stringify(newScores));
+    setScores(newScores);
+  };
+
+  const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+
+  return (
+    <AppContext.Provider value={{ user, login, logout, page, setPage, scores, addScore, totalScore, showTutorial, closeTutorial, openTutorial }}>
+      {children}
+    </AppContext.Provider>
+  );
+}
+
+// =================== TUTORIAL MODAL ===================
+// Mostrado uma vez por sessão (ou até o visitante clicar "Não mostrar de novo").
+// Foi pensado para alunos do ensino médio que estão visitando a Feira de
+// Profissões da Unisanta e nunca programaram antes.
+function TutorialModal({ open, onClose }) {
+  if (!open) return null;
+  const steps = [
+    { title: 'Bem-vindo à TechFair', text: 'Esta é uma demo interativa criada por alunos da Unisanta. Você vai jogar 5 minigames que apresentam conceitos reais de programação — sem precisar saber nada antes.' },
+    { title: 'Como navegar', text: 'O Hub mostra todos os jogos. Você pode entrar e sair quando quiser. Sua pontuação é salva enquanto a aba estiver aberta.' },
+    { title: 'Não tem certo ou errado', text: 'Erre à vontade. Cada minigame explica o conceito (HTML, CSS, digitação, debug, algoritmo) e te dá pistas. Pergunte aos alunos da Unisanta no estande quando travar.' },
+    { title: 'Pronto pra começar?', text: 'Clique em "Começar Experiência" na home, escolha um nome, e vá pro Hub. Boa feira!' },
+  ];
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+          <span style={{ fontSize: 28 }}>🎓</span>
+          <div>
+            <h3 style={{ fontSize: 20, fontWeight: 800 }}>Como funciona a TechFair</h3>
+            <p style={{ color: 'var(--text2)', fontSize: 13 }}>30 segundos pra entender tudo</p>
+          </div>
+        </div>
+        {steps.map((s, i) => (
+          <div key={i} className="tutorial-step">
+            <div className="num">{i + 1}</div>
+            <div className="body">
+              <h4>{s.title}</h4>
+              <p>{s.text}</p>
+            </div>
+          </div>
+        ))}
+        <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+          <button className="btn btn-cyan" style={{ flex: 1, justifyContent: 'center' }} onClick={onClose}>
+            Entendi, vamos lá →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =================== NAVBAR ===================
+function Navbar() {
+  const { user, logout, page, setPage, totalScore, openTutorial } = useContext(AppContext);
+  return (
+    <nav className="navbar">
+      <div className="navbar-logo" onClick={() => setPage(user ? 'hub' : 'home')}>
+        ⟨ TechFair /⟩
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {user && page !== 'hub' && (
+          <button className="btn btn-outline btn-sm" onClick={() => setPage('hub')}>← Hub</button>
+        )}
+        <button className="btn btn-sm" onClick={openTutorial} title="Reabrir o tutorial" style={{ background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 8 }}>
+          ❓ Como funciona
+        </button>
+        {user ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="navbar-user">
+              <div className="avatar">{user.name[0].toUpperCase()}</div>
+              <span>{user.name}</span>
+              <span style={{ color: 'var(--yellow)', fontFamily: 'Space Mono', fontSize: 12 }}>
+                ★ {totalScore}
+              </span>
+            </div>
+            <button className="btn btn-sm" onClick={logout} style={{ background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 8 }}>
+              Sair
+            </button>
+          </div>
+        ) : (
+          <button className="btn btn-cyan btn-sm" onClick={() => setPage('login')}>Entrar</button>
+        )}
+      </div>
+    </nav>
+  );
+}
+
+// =================== HOME PAGE ===================
+function HomePage() {
+  const { setPage, user } = useContext(AppContext);
+  const [typed, setTyped] = useState('');
+  const fullText = 'Bem-vindo ao futuro da educação tecnológica.';
+
+  useEffect(() => {
+    let i = 0;
+    const iv = setInterval(() => {
+      if (i < fullText.length) { setTyped(fullText.slice(0, ++i)); }
+      else clearInterval(iv);
+    }, 50);
+    return () => clearInterval(iv);
+  }, []);
+
+  const courses = [
+    { code: 'SI', name: 'Sistemas de Informação', color: 'var(--cyan)', desc: 'Gestão, TI empresarial, sistemas corporativos e tomada de decisão baseada em dados.', skills: ['Python', 'SQL', 'Gestão', 'Cloud'], duration: '4 anos', period: 'Noturno' },
+    { code: 'ADS', name: 'Análise e Des. de Sistemas', color: 'var(--purple)', desc: 'Desenvolvimento de software, programação full-stack, mobile e web moderno.', skills: ['React', 'Java', 'Node.js', 'DevOps'], duration: '3 anos', period: 'Noturno' },
+  ];
+
+  const partners = ['IBM', 'Oracle', 'Microsoft', 'Google', 'AWS', 'TOTVS'];
+  const stats = [{ v: '94%', l: 'Empregabilidade' }, { v: '3x', l: 'Mais vagas' }, { v: 'R$ 8k+', l: 'Salário médio' }, { v: '150+', l: 'Empresas parceiras' }];
+
+  return (
+    <div className="grid-bg" style={{ minHeight: '100vh', paddingTop: 64 }}>
+      {/* Hero */}
+      <section style={{ padding: '80px 32px 60px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(34,211,238,0.06) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 24, background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.2)', borderRadius: 20, padding: '6px 16px' }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)', animation: 'pulse-glow 2s infinite' }} />
+          <span style={{ fontSize: 13, color: 'var(--cyan)', fontFamily: 'Space Mono' }}>Feira de Profissões 2026 — Unisanta</span>
+        </div>
+
+        <h1 style={{ fontSize: 'clamp(2rem, 5vw, 4rem)', fontWeight: 800, lineHeight: 1.1, marginBottom: 24 }}>
+          Explore o mundo da<br />
+          <span style={{ background: 'linear-gradient(135deg, var(--cyan), var(--purple))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            Tecnologia
+          </span>
+        </h1>
+
+        <p style={{ fontSize: 18, color: 'var(--text2)', maxWidth: 560, margin: '0 auto 12px', minHeight: 28 }}>
+          {typed}<span style={{ animation: 'blink 1s infinite' }}>|</span>
+        </p>
+
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 36, flexWrap: 'wrap' }}>
+          <button className="btn btn-cyan btn-lg" onClick={() => setPage(user ? 'hub' : 'login')}>
+            <span>🎮</span> Começar Experiência
+          </button>
+          <button className="btn btn-outline btn-lg" onClick={() => document.getElementById('cursos').scrollIntoView({ behavior: 'smooth' })}>
+            Ver Cursos
+          </button>
+        </div>
+
+        {/* Mascote: dragão da Atlética da Unisanta — flutuando no hero */}
+        <div title="Dragão — mascote da Atlética da Unisanta" style={{ fontSize: 80, animation: 'float 3s ease-in-out infinite', marginTop: 40, filter: 'drop-shadow(0 0 20px rgba(34,211,238,0.4))' }}>
+          🐉
+        </div>
+        <p style={{ marginTop: 8, color: 'var(--text2)', fontSize: 12, fontFamily: 'Space Mono' }}>
+          Mascote oficial — Atlética Unisanta
+        </p>
+      </section>
+
+      {/* Stats */}
+      <section style={{ padding: '20px 32px', maxWidth: 1100, margin: '0 auto', width: '100%' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+          {stats.map((s, i) => (
+            <div key={i} className="card" style={{ textAlign: 'center', animationDelay: `${i * 0.1}s` }}>
+              <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--cyan)', fontFamily: 'Space Mono' }}>{s.v}</div>
+              <div style={{ color: 'var(--text2)', fontSize: 13, marginTop: 4 }}>{s.l}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Cursos */}
+      <section id="cursos" style={{ padding: '60px 32px', maxWidth: 1100, margin: '0 auto', width: '100%' }}>
+        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+          <span className="tag">CURSOS DISPONÍVEIS</span>
+          <h2 style={{ fontSize: 32, fontWeight: 800, marginTop: 12 }}>Escolha seu caminho</h2>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
+          {courses.map((c, i) => (
+            <div key={i} className="card" style={{ border: `1px solid ${c.color}30`, position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${c.color}, transparent)` }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                <div style={{ background: `${c.color}15`, border: `1px solid ${c.color}30`, borderRadius: 8, padding: '8px 12px', fontWeight: 800, fontSize: 18, color: c.color, fontFamily: 'Space Mono' }}>{c.code}</div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 16 }}>{c.name}</div>
+                  <div style={{ color: 'var(--text2)', fontSize: 12 }}>{c.duration} • {c.period}</div>
+                </div>
+              </div>
+              <p style={{ color: 'var(--text2)', fontSize: 14, lineHeight: 1.6, marginBottom: 16 }}>{c.desc}</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {c.skills.map(s => <span key={s} className="tag" style={{ borderColor: `${c.color}30`, color: c.color, background: `${c.color}10` }}>{s}</span>)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Partners */}
+      <section style={{ padding: '40px 32px 80px', background: 'rgba(30,41,59,0.5)', borderTop: '1px solid var(--border)' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', textAlign: 'center' }}>
+          <p style={{ color: 'var(--text2)', fontSize: 13, fontFamily: 'Space Mono', marginBottom: 24 }}>EMPRESAS PARCEIRAS</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, justifyContent: 'center', alignItems: 'center' }}>
+            {partners.map((p, i) => (
+              <div key={i} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 20px', color: 'var(--text2)', fontWeight: 700, fontFamily: 'Space Mono', fontSize: 14 }}>{p}</div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// =================== LOGIN PAGE ===================
+function LoginPage() {
+  const { login } = useContext(AppContext);
+  const [name, setName] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = () => {
+    if (!name.trim() || name.trim().length < 2) {
+      setError('Digite um nome com pelo menos 2 caracteres.');
+      return;
+    }
+    setLoading(true);
+    setTimeout(() => login(name.trim()), 800);
+  };
+
+  return (
+    <div className="grid-bg" style={{ minHeight: '100vh', paddingTop: 64, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ maxWidth: 440, width: '90%', animation: 'fadeIn 0.5s ease' }}>
+        <div className="card" style={{ border: '1px solid rgba(34,211,238,0.2)' }}>
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🔐</div>
+            <h2 style={{ fontSize: 24, fontWeight: 800 }}>Acesso à Arena</h2>
+            <p style={{ color: 'var(--text2)', fontSize: 14, marginTop: 8 }}>Digite seu nome para entrar na experiência</p>
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 12, fontFamily: 'Space Mono', color: 'var(--cyan)', marginBottom: 8, display: 'block' }}>// SEU_NOME</label>
+            <input
+              className="input-field"
+              type="text"
+              placeholder="Ex: João Silva"
+              value={name}
+              onChange={e => { setName(e.target.value); setError(''); }}
+              onKeyDown={e => e.key === 'Enter' && handleLogin()}
+              autoFocus
+            />
+            {error && <p style={{ color: 'var(--red)', fontSize: 12, marginTop: 6 }}>{error}</p>}
+          </div>
+
+          <button className="btn btn-cyan" style={{ width: '100%', justifyContent: 'center', padding: 14 }} onClick={handleLogin} disabled={loading}>
+            {loading ? '⟳ Carregando...' : '→ Entrar na Arena'}
+          </button>
+
+          <p style={{ textAlign: 'center', color: 'var(--text2)', fontSize: 12, marginTop: 16 }}>Nenhuma senha necessária · Seus dados ficam só no seu dispositivo</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =================== HUB PAGE ===================
+function HubPage() {
+  const { user, setPage, scores, totalScore } = useContext(AppContext);
+
+  const games = [
+    { id: 'codebuilder', icon: '🧱', name: 'Code Builder', desc: 'Monte páginas web arrastando blocos HTML', color: 'var(--cyan)', difficulty: 'Fácil', maxScore: 300 },
+    { id: 'cssbattle', icon: '🎯', name: 'CSS Battle', desc: 'Ajuste propriedades CSS para replicar o alvo', color: 'var(--purple)', difficulty: 'Médio', maxScore: 500 },
+    { id: 'typeracer', icon: '⌨️', name: 'Type Racer', desc: 'Digite código o mais rápido e preciso possível', color: 'var(--pink)', difficulty: 'Médio', maxScore: 400 },
+    { id: 'debugdetective', icon: '🕵️', name: 'Debug Detective', desc: 'Encontre e corrija os bugs no código', color: 'var(--green)', difficulty: 'Difícil', maxScore: 500 },
+    { id: 'algovisual', icon: '🧠', name: 'Algoritmo Visual', desc: 'Programe um personagem para navegar o labirinto', color: 'var(--yellow)', difficulty: 'Difícil', maxScore: 600 },
+  ];
+
+  return (
+    <div className="grid-bg" style={{ minHeight: '100vh', paddingTop: 64 }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px' }}>
+        {/* Welcome */}
+        <div className="card" style={{ marginBottom: 32, background: 'linear-gradient(135deg, rgba(34,211,238,0.05), rgba(168,85,247,0.05))', border: '1px solid rgba(34,211,238,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+          <div>
+            <p style={{ color: 'var(--text2)', fontSize: 13, fontFamily: 'Space Mono' }}>// USUÁRIO CONECTADO</p>
+            <h2 style={{ fontSize: 28, fontWeight: 800, marginTop: 4 }}>Olá, {user?.name}! 👋</h2>
+            <p style={{ color: 'var(--text2)', marginTop: 4 }}>Escolha um jogo e comece a acumular pontos.</p>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 36, fontWeight: 800, color: 'var(--yellow)', fontFamily: 'Space Mono' }}>★ {totalScore}</div>
+            <div style={{ fontSize: 12, color: 'var(--text2)' }}>Pontuação Total</div>
+          </div>
+        </div>
+
+        {/* Scores overview */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 32, flexWrap: 'wrap' }}>
+          {games.map(g => (
+            <div key={g.id} style={{ background: 'var(--bg2)', border: `1px solid ${g.color}20`, borderRadius: 8, padding: '8px 14px', minWidth: 100, textAlign: 'center' }}>
+              <div style={{ fontSize: 18 }}>{g.icon}</div>
+              <div style={{ fontFamily: 'Space Mono', fontSize: 13, color: g.color, fontWeight: 700 }}>{scores[g.id] || 0}</div>
+              <div style={{ fontSize: 10, color: 'var(--text2)' }}>/{g.maxScore}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Game cards */}
+        <h3 style={{ fontWeight: 700, marginBottom: 20, fontSize: 18 }}>Jogos Disponíveis</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
+          {games.map((g, i) => (
+            <div key={g.id} className="card" style={{ border: `1px solid ${g.color}20`, cursor: 'pointer', position: 'relative', overflow: 'hidden', animationDelay: `${i * 0.1}s` }}
+              onClick={() => setPage(g.id)}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${g.color}, transparent)` }} />
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
+                <span style={{ fontSize: 36 }}>{g.icon}</span>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ background: `${g.color}15`, color: g.color, border: `1px solid ${g.color}30`, borderRadius: 20, padding: '2px 10px', fontSize: 11, fontFamily: 'Space Mono' }}>{g.difficulty}</span>
+                  {scores[g.id] ? <div style={{ marginTop: 4, fontSize: 12, color: 'var(--yellow)', fontFamily: 'Space Mono' }}>★ {scores[g.id]}</div> : null}
+                </div>
+              </div>
+              <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6, color: g.color }}>{g.name}</h3>
+              <p style={{ color: 'var(--text2)', fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>{g.desc}</p>
+              <button className="btn btn-outline btn-sm" style={{ borderColor: g.color, color: g.color, width: '100%', justifyContent: 'center' }}>
+                {scores[g.id] ? '▶ Jogar Novamente' : '▶ Jogar'}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =================== GAME 1: CODE BUILDER ===================
+function CodeBuilderGame() {
+  const { addScore, setPage } = useContext(AppContext);
+  const [placed, setPlaced] = useState([]);
+  const [dragging, setDragging] = useState(null);
+  const [score, setScore] = useState(0);
+  const [phase, setPhase] = useState(0);
+  const [showResult, setShowResult] = useState(false);
+
+  const phases = [
+    {
+      target: ['header', 'nav', 'main', 'footer'],
+      label: 'Monte uma estrutura básica de página',
+    },
+    {
+      target: ['header', 'h1', 'p', 'img', 'button'],
+      label: 'Crie uma landing page simples',
+    },
+    {
+      target: ['nav', 'ul', 'li', 'li', 'main', 'aside'],
+      label: 'Estruture uma página com sidebar',
+    },
+  ];
+
+  const blocks = [
+    { tag: 'header', color: '#22d3ee', desc: 'Cabeçalho' },
+    { tag: 'nav', color: '#a855f7', desc: 'Navegação' },
+    { tag: 'main', color: '#4ade80', desc: 'Conteúdo Principal' },
+    { tag: 'aside', color: '#f97316', desc: 'Barra Lateral' },
+    { tag: 'footer', color: '#6366f1', desc: 'Rodapé' },
+    { tag: 'h1', color: '#f43f5e', desc: 'Título Principal' },
+    { tag: 'p', color: '#facc15', desc: 'Parágrafo' },
+    { tag: 'img', color: '#06b6d4', desc: 'Imagem' },
+    { tag: 'button', color: '#8b5cf6', desc: 'Botão' },
+    { tag: 'ul', color: '#10b981', desc: 'Lista' },
+    { tag: 'li', color: '#34d399', desc: 'Item de Lista' },
+  ];
+
+  const currentPhase = phases[phase];
+
+  const checkMatch = (arr) => {
+    const target = [...currentPhase.target].sort();
+    const current = [...arr].sort();
+    return JSON.stringify(target) === JSON.stringify(current);
+  };
+
+  // Adiciona um bloco e — se a estrutura ficou correta — concede pontos.
+  // Usado tanto pelo arrastar (handleDrop) quanto pelo clique (addBlock).
+  const addBlock = (tag) => {
+    const newPlaced = [...placed, tag];
+    setPlaced(newPlaced);
+    if (checkMatch(newPlaced)) {
+      const pts = 100 - placed.length * 5;
+      const earned = Math.max(pts, 20);
+      setScore(s => s + earned);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    if (dragging) addBlock(dragging);
+  };
+
+  const removeBlock = (idx) => {
+    setPlaced(placed.filter((_, i) => i !== idx));
+  };
+
+  const nextPhase = () => {
+    setPlaced([]);
+    if (phase < phases.length - 1) { setPhase(p => p + 1); }
+    else {
+      addScore('codebuilder', score);
+      setShowResult(true);
+    }
+  };
+
+  const matched = checkMatch(placed);
+  const targetBlocks = currentPhase.target;
+
+  return (
+    <div className="game-shell">
+      <div className="game-header">
+        <div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--cyan)' }}>🧱 Code Builder</h2>
+          <p style={{ color: 'var(--text2)', fontSize: 13, marginTop: 2 }}>Fase {phase + 1}/{phases.length}: {currentPhase.label}</p>
+        </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div className="score-badge">★ {score}</div>
+          <button className="btn btn-sm" onClick={() => setPage('hub')} style={{ background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 8 }}>← Sair</button>
+        </div>
+      </div>
+
+      <div className="game-body" style={{ display: 'block' }}>
+        <div className="concept-banner">
+          <span>💡</span>
+          <div>
+            <b>O que é HTML?</b> É a linguagem que estrutura toda página da web. Cada "tag" (header, nav, main, footer...) é uma caixa que organiza o conteúdo — como móveis em cômodos diferentes da casa. Aqui você vai montar a página juntando essas caixas na ordem certa.
+          </div>
+        </div>
+      </div>
+      <div className="game-body" style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 24, alignItems: 'start' }}>
+        {/* Blocks palette */}
+        <div>
+          <p style={{ fontSize: 12, color: 'var(--text2)', fontFamily: 'Space Mono', marginBottom: 12 }}>// BLOCOS DISPONÍVEIS</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {blocks.map((b, i) => (
+              <div key={i}
+                draggable
+                onDragStart={() => setDragging(b.tag)}
+                onDragEnd={() => setDragging(null)}
+                style={{ background: `${b.color}15`, border: `1px solid ${b.color}40`, borderRadius: 8, padding: '8px 12px', cursor: 'grab', userSelect: 'none', transition: 'all 0.2s' }}
+                onClick={() => addBlock(b.tag)}>
+                <div style={{ fontFamily: 'Space Mono', fontSize: 12, color: b.color, fontWeight: 700 }}>&lt;{b.tag}&gt;</div>
+                <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 2 }}>{b.desc}</div>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--text2)', marginTop: 12 }}>💡 Clique ou arraste os blocos para a zona de drop</p>
+        </div>
+
+        {/* Main area */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Target */}
+          <div className="card">
+            <p style={{ fontSize: 12, color: 'var(--text2)', fontFamily: 'Space Mono', marginBottom: 12 }}>// OBJETIVO</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {targetBlocks.map((t, i) => {
+                const block = blocks.find(b => b.tag === t);
+                return (
+                  <div key={i} style={{ background: `${block?.color || 'var(--cyan)'}15`, border: `1px solid ${block?.color || 'var(--cyan)'}40`, borderRadius: 8, padding: '8px 12px' }}>
+                    <div style={{ fontFamily: 'Space Mono', fontSize: 12, color: block?.color || 'var(--cyan)' }}>&lt;{t}&gt;</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Drop zone */}
+          <div
+            className="card"
+            onDragOver={e => e.preventDefault()}
+            onDrop={handleDrop}
+            style={{ minHeight: 200, border: `2px dashed ${matched ? 'var(--green)' : 'var(--border)'}`, background: matched ? 'rgba(74,222,128,0.05)' : 'var(--bg2)', transition: 'all 0.3s' }}>
+            <p style={{ fontSize: 12, color: 'var(--text2)', fontFamily: 'Space Mono', marginBottom: 12 }}>// SUA ESTRUTURA — arraste aqui ou clique nos blocos</p>
+            {placed.length === 0 ? (
+              <div style={{ textAlign: 'center', color: 'var(--text2)', padding: 40 }}>
+                <div style={{ fontSize: 32 }}>📦</div>
+                <p style={{ marginTop: 8 }}>Adicione blocos aqui</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {placed.map((t, i) => {
+                  const block = blocks.find(b => b.tag === t);
+                  return (
+                    <div key={i} style={{ background: `${block?.color || 'var(--cyan)'}20`, border: `1px solid ${block?.color || 'var(--cyan)'}50`, borderRadius: 8, padding: '8px 12px', cursor: 'pointer', position: 'relative' }}
+                      onClick={() => removeBlock(i)}
+                      title="Clique para remover">
+                      <div style={{ fontFamily: 'Space Mono', fontSize: 12, color: block?.color || 'var(--cyan)' }}>&lt;{t}&gt;</div>
+                      <div style={{ position: 'absolute', top: -4, right: -4, width: 14, height: 14, background: 'var(--red)', borderRadius: '50%', fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>×</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Feedback */}
+          {matched && (
+            <div style={{ background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)', borderRadius: 8, padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <p style={{ color: 'var(--green)', fontWeight: 700 }}>✅ Estrutura correta!</p>
+                <p style={{ color: 'var(--text2)', fontSize: 13 }}>Você organizou os elementos corretamente.</p>
+              </div>
+              <button className="btn btn-cyan" onClick={nextPhase}>
+                {phase < phases.length - 1 ? 'Próxima Fase →' : 'Finalizar →'}
+              </button>
+            </div>
+          )}
+
+          {placed.length > 0 && !matched && (
+            <div style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.3)', borderRadius: 8, padding: 12 }}>
+              <p style={{ color: 'var(--red)', fontSize: 13 }}>⚠ Estrutura incompleta ou incorreta. Continue adicionando blocos!</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {showResult && (
+        <div className="modal-overlay">
+          <div className="modal" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 60 }}>🏆</div>
+            <h3 style={{ fontSize: 24, fontWeight: 800, marginTop: 16 }}>Fase Completa!</h3>
+            <p style={{ color: 'var(--text2)', marginTop: 8 }}>Você completou o Code Builder!</p>
+            <div style={{ fontSize: 32, color: 'var(--yellow)', fontFamily: 'Space Mono', margin: '20px 0', fontWeight: 700 }}>★ {score} pontos</div>
+            <button className="btn btn-cyan" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setPage('hub')}>
+              ← Voltar ao Hub
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =================== GAME 2: CSS BATTLE ===================
+function CSSBattleGame() {
+  const { addScore, setPage } = useContext(AppContext);
+  const [props, setProps] = useState({ width: 100, height: 100, borderRadius: 0, bg: '#22d3ee', marginLeft: 0 });
+  const [phase, setPhase] = useState(0);
+  const [score, setScore] = useState(0);
+  const [showResult, setShowResult] = useState(false);
+
+  const phases = [
+    { target: { width: 120, height: 80, borderRadius: 40, bg: '#22d3ee', marginLeft: 60 }, label: 'Crie uma pílula ciano centralizada' },
+    { target: { width: 150, height: 150, borderRadius: 75, bg: '#a855f7', marginLeft: 25 }, label: 'Crie um círculo roxo' },
+    { target: { width: 80, height: 120, borderRadius: 8, bg: '#4ade80', marginLeft: 110 }, label: 'Crie um retângulo verde à direita' },
+  ];
+
+  const currentTarget = phases[phase].target;
+
+  const calcScore = () => {
+    const keys = ['width', 'height', 'borderRadius', 'marginLeft'];
+    let total = 500;
+    keys.forEach(k => {
+      const diff = Math.abs(props[k] - currentTarget[k]);
+      total -= diff * 1.5;
+    });
+    const colorMatch = props.bg === currentTarget.bg;
+    if (!colorMatch) total -= 80;
+    return Math.max(0, Math.round(total));
+  };
+
+  const pts = calcScore();
+  const accuracy = Math.round((pts / 500) * 100);
+
+  const nextPhase = () => {
+    setScore(s => s + pts);
+    setProps({ width: 100, height: 100, borderRadius: 0, bg: '#22d3ee', marginLeft: 0 });
+    if (phase < phases.length - 1) setPhase(p => p + 1);
+    else {
+      addScore('cssbattle', score + pts);
+      setShowResult(true);
+    }
+  };
+
+  const colors = ['#22d3ee', '#a855f7', '#4ade80', '#facc15', '#f87171', '#f97316'];
+
+  const Slider = ({ label, prop, min, max }) => (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+        <span style={{ fontSize: 12, color: 'var(--text2)', fontFamily: 'Space Mono' }}>{label}</span>
+        <span style={{ fontSize: 12, color: 'var(--cyan)', fontFamily: 'Space Mono' }}>{props[prop]}px</span>
+      </div>
+      <input type="range" min={min} max={max} value={props[prop]} style={{ width: '100%', accentColor: 'var(--cyan)' }}
+        onChange={e => setProps(p => ({ ...p, [prop]: +e.target.value }))} />
+    </div>
+  );
+
+  return (
+    <div className="game-shell">
+      <div className="game-header">
+        <div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--purple)' }}>🎯 CSS Battle</h2>
+          <p style={{ color: 'var(--text2)', fontSize: 13, marginTop: 2 }}>Fase {phase + 1}/{phases.length}: {phases[phase].label}</p>
+        </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div className="score-badge">★ {score}</div>
+          <button className="btn btn-sm" onClick={() => setPage('hub')} style={{ background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 8 }}>← Sair</button>
+        </div>
+      </div>
+
+      <div className="game-body" style={{ display: 'block' }}>
+        <div className="concept-banner">
+          <span>🎨</span>
+          <div>
+            <b>O que é CSS?</b> CSS controla a aparência de cada elemento da página — tamanho, cor, cantos arredondados, posição. Você vai ajustar os valores nos sliders até a sua caixa ficar igual à do alvo. Cada slider corresponde a uma propriedade real que devs usam no dia a dia.
+          </div>
+        </div>
+      </div>
+      <div className="game-body" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 260px', gap: 24, alignItems: 'start' }}>
+        {/* Target */}
+        <div>
+          <p style={{ fontSize: 12, color: 'var(--text2)', fontFamily: 'Space Mono', marginBottom: 12 }}>// ALVO</p>
+          <div className="card" style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ width: currentTarget.width, height: currentTarget.height, background: currentTarget.bg, borderRadius: currentTarget.borderRadius, marginLeft: currentTarget.marginLeft }} />
+          </div>
+        </div>
+
+        {/* Preview */}
+        <div>
+          <p style={{ fontSize: 12, color: 'var(--text2)', fontFamily: 'Space Mono', marginBottom: 12 }}>// SEU RESULTADO</p>
+          <div className="card" style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ width: props.width, height: props.height, background: props.bg, borderRadius: props.borderRadius, marginLeft: props.marginLeft, transition: 'all 0.1s' }} />
+          </div>
+          {/* Accuracy meter */}
+          <div style={{ marginTop: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+              <span style={{ fontSize: 12, color: 'var(--text2)' }}>Precisão</span>
+              <span style={{ fontSize: 12, color: accuracy > 70 ? 'var(--green)' : accuracy > 40 ? 'var(--yellow)' : 'var(--red)', fontFamily: 'Space Mono' }}>{accuracy}%</span>
+            </div>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${accuracy}%`, background: accuracy > 70 ? 'var(--green)' : accuracy > 40 ? 'var(--yellow)' : 'var(--red)' }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div>
+          <p style={{ fontSize: 12, color: 'var(--text2)', fontFamily: 'Space Mono', marginBottom: 12 }}>// CONTROLES</p>
+          <div className="card">
+            <Slider label="width" prop="width" min={20} max={240} />
+            <Slider label="height" prop="height" min={20} max={240} />
+            <Slider label="border-radius" prop="borderRadius" min={0} max={120} />
+            <Slider label="margin-left" prop="marginLeft" min={0} max={150} />
+
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ fontSize: 12, color: 'var(--text2)', fontFamily: 'Space Mono', marginBottom: 8 }}>background</p>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {colors.map(c => (
+                  <button key={c} onClick={() => setProps(p => ({ ...p, bg: c }))}
+                    style={{ width: 28, height: 28, background: c, border: props.bg === c ? '2px solid white' : '2px solid transparent', borderRadius: 6, cursor: 'pointer' }} />
+                ))}
+              </div>
+            </div>
+
+            <div style={{ fontSize: 12, color: 'var(--yellow)', fontFamily: 'Space Mono', marginBottom: 12 }}>Pontos: {pts}</div>
+
+            <button className="btn btn-cyan" style={{ width: '100%', justifyContent: 'center' }} onClick={nextPhase}>
+              {phase < phases.length - 1 ? 'Confirmar & Próximo →' : 'Finalizar →'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {showResult && (
+        <div className="modal-overlay">
+          <div className="modal" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 60 }}>🏆</div>
+            <h3 style={{ fontSize: 24, fontWeight: 800, marginTop: 16 }}>CSS Master!</h3>
+            <div style={{ fontSize: 32, color: 'var(--yellow)', fontFamily: 'Space Mono', margin: '20px 0', fontWeight: 700 }}>★ {score + pts} pontos</div>
+            <button className="btn btn-cyan" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setPage('hub')}>← Voltar ao Hub</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =================== GAME 3: TYPE RACER ===================
+function TypeRacerGame() {
+  const { addScore, setPage } = useContext(AppContext);
+  const [status, setStatus] = useState('idle');
+  const [input, setInput] = useState('');
+  const [startTime, setStartTime] = useState(null);
+  const [elapsed, setElapsed] = useState(0);
+  const [phaseIdx, setPhaseIdx] = useState(0);
+  const [score, setScore] = useState(0);
+  const [showResult, setShowResult] = useState(false);
+  const inputRef = useRef(null);
+  const timerRef = useRef(null);
+
+  const snippets = [
+    `function greet(name) {\n  return "Olá, " + name + "!";\n}`,
+    `const nums = [1, 2, 3, 4, 5];\nconst soma = nums.reduce((a, b) => a + b, 0);\nconsole.log(soma);`,
+    `for (let i = 0; i < 10; i++) {\n  if (i % 2 === 0) {\n    console.log(i);\n  }\n}`,
+  ];
+
+  const target = snippets[phaseIdx];
+
+  useEffect(() => {
+    if (status === 'playing') {
+      timerRef.current = setInterval(() => setElapsed(Date.now() - startTime), 100);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [status, startTime]);
+
+  const start = () => {
+    setInput('');
+    setStatus('playing');
+    setStartTime(Date.now());
+    setElapsed(0);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
+  const handleInput = (e) => {
+    const val = e.target.value;
+    setInput(val);
+    if (val === target) {
+      clearInterval(timerRef.current);
+      setStatus('done');
+      const secs = elapsed / 1000;
+      const chars = target.length;
+      const wpm = Math.round((chars / 5) / (secs / 60));
+      let errors = 0;
+      for (let i = 0; i < val.length; i++) { if (val[i] !== target[i]) errors++; }
+      const pts = Math.max(0, Math.round(wpm * 2 - errors * 10));
+      setScore(s => s + pts);
+    }
+  };
+
+  const nextPhase = () => {
+    if (phaseIdx < snippets.length - 1) {
+      setPhaseIdx(p => p + 1);
+      setInput('');
+      setStatus('idle');
+    } else {
+      addScore('typeracer', score);
+      setShowResult(true);
+    }
+  };
+
+  const getWPM = () => {
+    if (elapsed === 0) return 0;
+    const typed = input.length;
+    return Math.round((typed / 5) / ((elapsed / 1000) / 60));
+  };
+
+  const getAccuracy = () => {
+    if (input.length === 0) return 100;
+    let correct = 0;
+    for (let i = 0; i < input.length; i++) { if (input[i] === target[i]) correct++; }
+    return Math.round((correct / input.length) * 100);
+  };
+
+  // Render highlighted text
+  const renderTarget = () => {
+    return target.split('').map((char, i) => {
+      let color = 'var(--text2)';
+      if (i < input.length) {
+        color = input[i] === char ? 'var(--green)' : 'var(--red)';
+      } else if (i === input.length) {
+        color = 'var(--cyan)';
+      }
+      return (
+        <span key={i} style={{ color, background: i === input.length ? 'rgba(34,211,238,0.2)' : 'transparent', borderRadius: 2 }}>
+          {char === '\n' ? <><br /></> : char}
+        </span>
+      );
+    });
+  };
+
+  return (
+    <div className="game-shell">
+      <div className="game-header">
+        <div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--pink)' }}>⌨️ Type Racer</h2>
+          <p style={{ color: 'var(--text2)', fontSize: 13, marginTop: 2 }}>Snippet {phaseIdx + 1}/{snippets.length}</p>
+        </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {status === 'playing' && (
+            <>
+              <div style={{ fontFamily: 'Space Mono', fontSize: 13, color: 'var(--cyan)' }}>{getWPM()} WPM</div>
+              <div style={{ fontFamily: 'Space Mono', fontSize: 13, color: 'var(--green)' }}>{getAccuracy()}%</div>
+              <div style={{ fontFamily: 'Space Mono', fontSize: 13, color: 'var(--text2)' }}>{(elapsed / 1000).toFixed(1)}s</div>
+            </>
+          )}
+          <div className="score-badge">★ {score}</div>
+          <button className="btn btn-sm" onClick={() => setPage('hub')} style={{ background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 8 }}>← Sair</button>
+        </div>
+      </div>
+
+      <div className="game-body" style={{ maxWidth: 800, margin: '0 auto' }}>
+        <div className="concept-banner">
+          <span>⌨️</span>
+          <div>
+            <b>Por que digitar rápido importa?</b> Programadores passam o dia escrevendo código. Quanto mais natural for digitar — incluindo símbolos como <code className="mono">{'{ } [ ] ;'}</code> — mais rápido você transforma ideia em programa. Não tem segredo: tente errar menos, depois aumente a velocidade.
+          </div>
+        </div>
+        {status === 'idle' && (
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <div style={{ fontSize: 60, marginBottom: 16 }}>⌨️</div>
+            <h3 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Pronto para digitar?</h3>
+            <p style={{ color: 'var(--text2)', marginBottom: 24 }}>Digite o código exibido o mais rápido possível com precisão.</p>
+            <button className="btn btn-cyan btn-lg" onClick={start}>▶ Começar!</button>
+          </div>
+        )}
+
+        {(status === 'playing' || status === 'done') && (
+          <div>
+            <div className="code-block" style={{ marginBottom: 20, fontSize: 14, lineHeight: 1.8 }}>
+              <p style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 8, fontFamily: 'Space Mono' }}>// DIGITE O CÓDIGO ABAIXO</p>
+              <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'Space Mono' }}>{renderTarget()}</pre>
+            </div>
+
+            <textarea
+              ref={inputRef}
+              className="input-field"
+              style={{ height: 140, resize: 'none', fontFamily: 'Space Mono', fontSize: 14, lineHeight: 1.8 }}
+              value={input}
+              onChange={handleInput}
+              disabled={status === 'done'}
+              placeholder="Comece a digitar aqui..."
+              spellCheck={false}
+              autoCapitalize="none"
+              autoCorrect="off"
+            />
+
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: 'var(--text2)' }}>Progresso</span>
+                <span style={{ fontSize: 12, color: 'var(--cyan)', fontFamily: 'Space Mono' }}>{input.length}/{target.length}</span>
+              </div>
+              <div className="progress-bar">
+                <div className="progress-fill" style={{ width: `${(input.length / target.length) * 100}%` }} />
+              </div>
+            </div>
+
+            {status === 'done' && (
+              <div style={{ marginTop: 20, background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)', borderRadius: 8, padding: 20 }}>
+                <p style={{ color: 'var(--green)', fontWeight: 700, fontSize: 18 }}>✅ Concluído!</p>
+                <div style={{ display: 'flex', gap: 24, marginTop: 12, flexWrap: 'wrap' }}>
+                  <div><div style={{ fontFamily: 'Space Mono', fontSize: 20, color: 'var(--cyan)' }}>{getWPM()}</div><div style={{ fontSize: 12, color: 'var(--text2)' }}>WPM</div></div>
+                  <div><div style={{ fontFamily: 'Space Mono', fontSize: 20, color: 'var(--green)' }}>{getAccuracy()}%</div><div style={{ fontSize: 12, color: 'var(--text2)' }}>Precisão</div></div>
+                  <div><div style={{ fontFamily: 'Space Mono', fontSize: 20, color: 'var(--yellow)' }}>{(elapsed / 1000).toFixed(1)}s</div><div style={{ fontSize: 12, color: 'var(--text2)' }}>Tempo</div></div>
+                </div>
+                <button className="btn btn-cyan" style={{ marginTop: 16 }} onClick={nextPhase}>
+                  {phaseIdx < snippets.length - 1 ? 'Próximo Snippet →' : 'Finalizar →'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {showResult && (
+        <div className="modal-overlay">
+          <div className="modal" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 60 }}>🏆</div>
+            <h3 style={{ fontSize: 24, fontWeight: 800, marginTop: 16 }}>Speed Typer!</h3>
+            <div style={{ fontSize: 32, color: 'var(--yellow)', fontFamily: 'Space Mono', margin: '20px 0', fontWeight: 700 }}>★ {score} pontos</div>
+            <button className="btn btn-cyan" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setPage('hub')}>← Voltar ao Hub</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =================== GAME 4: DEBUG DETECTIVE ===================
+function DebugDetectiveGame() {
+  const { addScore, setPage } = useContext(AppContext);
+  const [phase, setPhase] = useState(0);
+  const [score, setScore] = useState(0);
+  const [found, setFound] = useState([]);
+  const [showResult, setShowResult] = useState(false);
+  const [feedback, setFeedback] = useState('');
+
+  const challenges = [
+    {
+      label: 'Função com 3 bugs',
+      code: [
+        { line: 1, text: 'function calcMedia(notas) {', ok: true },
+        { line: 2, text: '  let soma = 1;', ok: false, bug: 'Inicialização errada: deveria ser `let soma = 0`' },
+        { line: 3, text: '  for (let i = 0; i <= notas.length; i++) {', ok: false, bug: 'Condição incorreta: deveria ser `i < notas.length`' },
+        { line: 4, text: '    soma += notas[i];', ok: true },
+        { line: 5, text: '  }', ok: true },
+        { line: 6, text: '  return soma / notas.length * 2;', ok: false, bug: 'Não multiplica por 2: `return soma / notas.length`' },
+        { line: 7, text: '}', ok: true },
+      ],
+    },
+    {
+      label: 'Validação com bugs',
+      code: [
+        { line: 1, text: 'function validaEmail(email) {', ok: true },
+        { line: 2, text: "  if (email === '') {", ok: false, bug: 'Deveria usar `.length === 0` ou `!email`' },
+        { line: 3, text: "    return false;", ok: true },
+        { line: 4, text: '  }', ok: true },
+        { line: 5, text: "  const arroba = email.includes('@');", ok: true },
+        { line: 6, text: "  const ponto = email.includes('.');", ok: true },
+        { line: 7, text: '  return arroba && !ponto;', ok: false, bug: 'Operador errado: deveria ser `arroba && ponto`' },
+        { line: 8, text: '}', ok: true },
+      ],
+    },
+  ];
+
+  const currentChallenge = challenges[phase];
+  const bugLines = currentChallenge.code.filter(l => !l.ok);
+  const allFound = found.length === bugLines.length;
+
+  const clickLine = (lineObj) => {
+    if (found.includes(lineObj.line)) return;
+    if (!lineObj.ok) {
+      setFound(f => [...f, lineObj.line]);
+      setFeedback(`🐛 Bug encontrado na linha ${lineObj.line}: ${lineObj.bug}`);
+      const pts = 100 - found.length * 15;
+      setScore(s => s + Math.max(pts, 20));
+    } else {
+      setFeedback(`✅ Linha ${lineObj.line} está correta — continue procurando!`);
+    }
+  };
+
+  const nextPhase = () => {
+    setFound([]);
+    setFeedback('');
+    if (phase < challenges.length - 1) setPhase(p => p + 1);
+    else {
+      addScore('debugdetective', score);
+      setShowResult(true);
+    }
+  };
+
+  return (
+    <div className="game-shell">
+      <div className="game-header">
+        <div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--green)' }}>🕵️ Debug Detective</h2>
+          <p style={{ color: 'var(--text2)', fontSize: 13, marginTop: 2 }}>Caso {phase + 1}/{challenges.length}: {currentChallenge.label}</p>
+        </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div style={{ fontFamily: 'Space Mono', fontSize: 13, color: 'var(--red)' }}>🐛 {found.length}/{bugLines.length}</div>
+          <div className="score-badge">★ {score}</div>
+          <button className="btn btn-sm" onClick={() => setPage('hub')} style={{ background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 8 }}>← Sair</button>
+        </div>
+      </div>
+
+      <div className="game-body" style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div className="concept-banner">
+          <span>🔍</span>
+          <div>
+            <b>O que é "debugar"?</b> Bug é um erro escondido no código. Programar é, em grande parte, achar e consertar bugs — leitura linha-a-linha, comparando o que o código <em>faz</em> com o que <em>deveria fazer</em>. Aqui você treina exatamente esse olhar.
+          </div>
+        </div>
+        <div className="card" style={{ marginBottom: 16, background: 'rgba(34,211,238,0.05)', borderColor: 'rgba(34,211,238,0.2)' }}>
+          <p style={{ fontSize: 13, color: 'var(--cyan)' }}>💡 Clique nas linhas com bugs para identificá-los. Existem <strong style={{ color: 'var(--red)' }}>{bugLines.length} bugs</strong> neste código.</p>
+        </div>
+
+        <div className="code-block">
+          {currentChallenge.code.map((line, i) => {
+            const isBug = !line.ok;
+            const isFound = found.includes(line.line);
+            return (
+              <div key={i} onClick={() => clickLine(line)}
+                style={{ display: 'flex', gap: 12, padding: '4px 8px', borderRadius: 4, cursor: 'pointer', background: isFound ? 'rgba(248,113,113,0.15)' : 'transparent', border: isFound ? '1px solid rgba(248,113,113,0.3)' : '1px solid transparent', marginBottom: 2, transition: 'all 0.15s' }}>
+                <span style={{ color: 'var(--text2)', minWidth: 20, userSelect: 'none', fontSize: 12 }}>{line.line}</span>
+                <span style={{ fontFamily: 'Space Mono', fontSize: 13, color: isFound ? 'var(--red)' : 'var(--text)' }}>
+                  {line.text}
+                </span>
+                {isFound && <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--red)' }}>🐛 BUG</span>}
+              </div>
+            );
+          })}
+        </div>
+
+        {feedback && (
+          <div style={{ marginTop: 16, background: feedback.startsWith('🐛') ? 'rgba(248,113,113,0.1)' : 'rgba(74,222,128,0.1)', border: `1px solid ${feedback.startsWith('🐛') ? 'rgba(248,113,113,0.3)' : 'rgba(74,222,128,0.3)'}`, borderRadius: 8, padding: 12 }}>
+            <p style={{ fontSize: 14, color: feedback.startsWith('🐛') ? 'var(--red)' : 'var(--green)' }}>{feedback}</p>
+          </div>
+        )}
+
+        {allFound && (
+          <div style={{ marginTop: 16, background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)', borderRadius: 8, padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <p style={{ color: 'var(--green)', fontWeight: 700 }}>✅ Todos os bugs encontrados!</p>
+              <p style={{ color: 'var(--text2)', fontSize: 13 }}>Excelente trabalho, detetive!</p>
+            </div>
+            <button className="btn btn-cyan" onClick={nextPhase}>
+              {phase < challenges.length - 1 ? 'Próximo Caso →' : 'Finalizar →'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {showResult && (
+        <div className="modal-overlay">
+          <div className="modal" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 60 }}>🏆</div>
+            <h3 style={{ fontSize: 24, fontWeight: 800, marginTop: 16 }}>Detetive Master!</h3>
+            <div style={{ fontSize: 32, color: 'var(--yellow)', fontFamily: 'Space Mono', margin: '20px 0', fontWeight: 700 }}>★ {score} pontos</div>
+            <button className="btn btn-cyan" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setPage('hub')}>← Voltar ao Hub</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =================== GAME 5: ALGO VISUAL ===================
+function AlgoVisualGame() {
+  const { addScore, setPage } = useContext(AppContext);
+  const GRID = 8;
+  const [code, setCode] = useState('');
+  const [charPos, setCharPos] = useState({ x: 0, y: 0 });
+  const [running, setRunning] = useState(false);
+  const [log, setLog] = useState([]);
+  const [won, setWon] = useState(false);
+  const [phase, setPhase] = useState(0);
+  const [score, setScore] = useState(0);
+  const [showResult, setShowResult] = useState(false);
+  const [animPos, setAnimPos] = useState({ x: 0, y: 0 });
+  const [walls, setWalls] = useState([]);
+
+  const phases = [
+    { start: { x: 0, y: 0 }, goal: { x: 7, y: 0 }, walls: [], hint: 'Move right 7 times: `right(7)`' },
+    { start: { x: 0, y: 0 }, goal: { x: 4, y: 4 }, walls: [{ x: 2, y: 0 }, { x: 2, y: 1 }, { x: 2, y: 2 }], hint: 'Desça 3, mova para direita, continue!' },
+    { start: { x: 0, y: 7 }, goal: { x: 7, y: 0 }, walls: [{ x: 3, y: 4 }, { x: 3, y: 5 }, { x: 3, y: 6 }], hint: 'Suba e vá para direita evitando obstáculos.' },
+  ];
+
+  const currentPhase = phases[phase];
+
+  useEffect(() => {
+    setCharPos({ ...currentPhase.start });
+    setAnimPos({ ...currentPhase.start });
+    setWalls(currentPhase.walls);
+    setWon(false);
+    setLog([]);
+    setCode('');
+  }, [phase]);
+
+  const isWall = (x, y) => walls.some(w => w.x === x && w.y === y);
+  const isGoal = (x, y) => x === currentPhase.goal.x && y === currentPhase.goal.y;
+
+  const runCode = () => {
+    setRunning(true);
+    setLog([]);
+    const lines = [];
+
+    // Converte um único comando "right(3)" / "down(2)" / etc. em movimentos.
+    const tokenToMoves = (token) => {
+      const moves = [];
+      const m = token.match(/^(right|left|up|down)\((\d+)\)$/);
+      if (!m) return moves;
+      const dir = m[1];
+      const n = Math.min(+m[2], 50); // cap pra evitar laços absurdos
+      const delta = { right: { dx: 1, dy: 0 }, left: { dx: -1, dy: 0 }, up: { dx: 0, dy: -1 }, down: { dx: 0, dy: 1 } }[dir];
+      for (let i = 0; i < n; i++) moves.push(delta);
+      return moves;
+    };
+
+    // Parser com suporte a laços `for N:` que repete o bloco indentado.
+    // Ex.:  for 3:
+    //         right(2)
+    //         down(1)
+    const processCode = (src) => {
+      const rawLines = src.split('\n');
+      let i = 0;
+      while (i < rawLines.length) {
+        const raw = rawLines[i];
+        const indent = raw.length - raw.trimStart().length;
+        const token = raw.trim();
+        if (!token) { i++; continue; }
+
+        const forMatch = token.match(/^for\s+(\d+)\s*:\s*$/);
+        if (forMatch) {
+          const reps = Math.min(+forMatch[1], 20);
+          // Coleta o bloco indentado abaixo do "for"
+          const block = [];
+          let j = i + 1;
+          while (j < rawLines.length) {
+            const inner = rawLines[j];
+            if (!inner.trim()) { j++; continue; }
+            const innerIndent = inner.length - inner.trimStart().length;
+            if (innerIndent <= indent) break;
+            block.push(inner.trim());
+            j++;
+          }
+          // Expande as repetições em movimentos diretos
+          for (let r = 0; r < reps; r++) {
+            for (const stmt of block) tokenToMoves(stmt).forEach(m => lines.push(m));
+          }
+          i = j;
+        } else {
+          tokenToMoves(token).forEach(m => lines.push(m));
+          i++;
+        }
+      }
+    };
+    processCode(code);
+
+    let pos = { ...currentPhase.start };
+    let step = 0;
+    const logMessages = [];
+
+    const animate = () => {
+      if (step >= lines.length) {
+        const reached = isGoal(pos.x, pos.y);
+        if (reached) {
+          setWon(true);
+          const pts = Math.max(300 - step * 10, 50);
+          setScore(s => s + pts);
+          logMessages.push('🎉 Destino alcançado!');
+        } else {
+          logMessages.push('❌ Objetivo não alcançado. Tente novamente.');
+        }
+        setLog([...logMessages]);
+        setRunning(false);
+        return;
+      }
+
+      const { dx, dy } = lines[step];
+      const nx = pos.x + dx;
+      const ny = pos.y + dy;
+
+      if (nx < 0 || nx >= GRID || ny < 0 || ny >= GRID || isWall(nx, ny)) {
+        logMessages.push(`⚠ Colisão na posição (${nx}, ${ny})! Movimento bloqueado.`);
+        setLog([...logMessages]);
+        setRunning(false);
+        return;
+      }
+
+      pos = { x: nx, y: ny };
+      setAnimPos({ ...pos });
+      setCharPos({ ...pos });
+      step++;
+      logMessages.push(`→ Moveu para (${pos.x}, ${pos.y})`);
+      setTimeout(animate, 250);
+    };
+    setTimeout(animate, 100);
+  };
+
+  const nextPhase = () => {
+    if (phase < phases.length - 1) setPhase(p => p + 1);
+    else {
+      addScore('algovisual', score);
+      setShowResult(true);
+    }
+  };
+
+  const renderGrid = () => {
+    const cells = [];
+    for (let y = 0; y < GRID; y++) {
+      for (let x = 0; x < GRID; x++) {
+        const isChar = charPos.x === x && charPos.y === y;
+        const isGoalCell = isGoal(x, y);
+        const isWallCell = isWall(x, y);
+        const isStart = currentPhase.start.x === x && currentPhase.start.y === y;
+        cells.push(
+          <div key={`${x}-${y}`} style={{ width: 52, height: 52, border: '1px solid rgba(34,211,238,0.1)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, background: isWallCell ? 'rgba(248,113,113,0.3)' : isGoalCell ? 'rgba(74,222,128,0.2)' : isStart ? 'rgba(34,211,238,0.1)' : 'transparent', position: 'relative', transition: 'all 0.2s' }}>
+            {isChar && <span style={{ position: 'absolute', animation: running ? 'pulse-glow 0.5s infinite' : 'none', fontSize: 24 }}>🤖</span>}
+            {isGoalCell && !isChar && <span>🏁</span>}
+            {isWallCell && <span>🧱</span>}
+          </div>
+        );
+      }
+    }
+    return cells;
+  };
+
+  return (
+    <div className="game-shell">
+      <div className="game-header">
+        <div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--yellow)' }}>🧠 Algoritmo Visual</h2>
+          <p style={{ color: 'var(--text2)', fontSize: 13, marginTop: 2 }}>Fase {phase + 1}/{phases.length}</p>
+        </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div className="score-badge">★ {score}</div>
+          <button className="btn btn-sm" onClick={() => setPage('hub')} style={{ background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 8 }}>← Sair</button>
+        </div>
+      </div>
+
+      <div className="game-body" style={{ display: 'block' }}>
+        <div className="concept-banner">
+          <span>🧠</span>
+          <div>
+            <b>O que é um algoritmo?</b> Uma sequência de instruções para resolver um problema — tipo uma receita. Aqui você escreve passos (right, left, up, down) ou um <code className="mono">for</code> que repete um bloco. É a mesma lógica que faz GPS calcular rota e jogos moverem personagens.
+          </div>
+        </div>
+      </div>
+      <div className="game-body" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24, alignItems: 'start' }}>
+        {/* Grid */}
+        <div>
+          <p style={{ fontSize: 12, color: 'var(--text2)', fontFamily: 'Space Mono', marginBottom: 12 }}>// LABIRINTO — Leve o 🤖 até a 🏁</p>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${GRID}, 52px)`, gap: 2, background: '#0d1117', border: '1px solid var(--border)', borderRadius: 8, padding: 12, width: 'fit-content' }}>
+            {renderGrid()}
+          </div>
+
+          {/* Log */}
+          <div style={{ marginTop: 16, background: '#0d1117', border: '1px solid var(--border)', borderRadius: 8, padding: 12, maxHeight: 120, overflowY: 'auto', fontFamily: 'Space Mono', fontSize: 12 }}>
+            {log.length === 0 ? <span style={{ color: 'var(--text2)' }}>&gt; Aguardando execução...</span> : log.map((l, i) => <div key={i} style={{ color: l.startsWith('🎉') ? 'var(--green)' : l.startsWith('❌') ? 'var(--red)' : l.startsWith('⚠') ? 'var(--yellow)' : 'var(--text2)' }}>{l}</div>)}
+          </div>
+        </div>
+
+        {/* Code editor */}
+        <div>
+          <div className="card" style={{ marginBottom: 16, background: 'rgba(250,204,21,0.05)', borderColor: 'rgba(250,204,21,0.2)' }}>
+            <p style={{ fontSize: 12, color: 'var(--yellow)', marginBottom: 8 }}>💡 Dica: {currentPhase.hint}</p>
+            <div className="code-block" style={{ fontSize: 12, padding: 10 }}>
+              <div style={{ color: 'var(--text2)' }}><span className="cm"># Comandos disponíveis:</span></div>
+              <div><span className="fn">right</span>(<span className="num">n</span>) <span className="cm"># move n casas →</span></div>
+              <div><span className="fn">left</span>(<span className="num">n</span>) <span className="cm"># move n casas ←</span></div>
+              <div><span className="fn">up</span>(<span className="num">n</span>) <span className="cm"># move n casas ↑</span></div>
+              <div><span className="fn">down</span>(<span className="num">n</span>) <span className="cm"># move n casas ↓</span></div>
+              <div style={{ marginTop: 6 }}><span className="cm"># Laço (repete o bloco indentado):</span></div>
+              <div><span className="fn">for</span> <span className="num">3</span>:</div>
+              <div>&nbsp;&nbsp;<span className="fn">right</span>(<span className="num">1</span>)</div>
+              <div>&nbsp;&nbsp;<span className="fn">down</span>(<span className="num">1</span>)</div>
+            </div>
+          </div>
+
+          <p style={{ fontSize: 12, color: 'var(--text2)', fontFamily: 'Space Mono', marginBottom: 8 }}>// SEU CÓDIGO</p>
+          <textarea
+            className="input-field"
+            style={{ height: 180, resize: 'none', fontFamily: 'Space Mono', fontSize: 13 }}
+            value={code}
+            onChange={e => setCode(e.target.value)}
+            placeholder="right(3)&#10;down(2)&#10;right(4)"
+            disabled={running}
+          />
+
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <button className="btn btn-cyan" style={{ flex: 1, justifyContent: 'center' }} onClick={runCode} disabled={running || !code.trim()}>
+              {running ? '⟳ Executando...' : '▶ Executar'}
+            </button>
+            <button className="btn btn-outline btn-sm" onClick={() => { setCharPos({ ...currentPhase.start }); setWon(false); setLog([]); }}>↺</button>
+          </div>
+
+          {won && (
+            <div style={{ marginTop: 16, background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)', borderRadius: 8, padding: 16, textAlign: 'center' }}>
+              <p style={{ color: 'var(--green)', fontWeight: 700, fontSize: 16 }}>🎉 Objetivo alcançado!</p>
+              <button className="btn btn-cyan" style={{ marginTop: 12, width: '100%', justifyContent: 'center' }} onClick={nextPhase}>
+                {phase < phases.length - 1 ? 'Próxima Fase →' : 'Finalizar →'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {showResult && (
+        <div className="modal-overlay">
+          <div className="modal" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 60 }}>🏆</div>
+            <h3 style={{ fontSize: 24, fontWeight: 800, marginTop: 16 }}>Algoritmo Master!</h3>
+            <div style={{ fontSize: 32, color: 'var(--yellow)', fontFamily: 'Space Mono', margin: '20px 0', fontWeight: 700 }}>★ {score} pontos</div>
+            <button className="btn btn-cyan" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setPage('hub')}>← Voltar ao Hub</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =================== APP ROUTER ===================
+function SiteFooter() {
+  const { logout } = useContext(AppContext);
+  return (
+    <footer className="site-footer">
+      <div>
+        <strong style={{ color: 'var(--text)' }}>TechFair</strong> — workshop interativo da
+        <a href="https://www.unisanta.br" target="_blank" rel="noreferrer"> Universidade Santa Cecília (Unisanta)</a>.
+      </div>
+      <div style={{ marginTop: 6 }}>
+        Construído por alunos de SI / ADS para a Feira de Profissões 2026 — Santos, SP.
+      </div>
+      <div style={{ marginTop: 14 }}>
+        <button className="btn btn-outline btn-sm" onClick={logout} title="Reseta a sessão para o próximo visitante">
+          🔄 Próximo visitante (resetar)
+        </button>
+      </div>
+      <div className="credit">/* feito com React, sem build step — open source */</div>
+    </footer>
+  );
+}
+
+function App() {
+  const { page, user, showTutorial, closeTutorial } = useContext(AppContext);
+
+  const renderPage = () => {
+    if (page === 'home') return <HomePage />;
+    if (page === 'login') return <LoginPage />;
+    if (page === 'hub') return user ? <HubPage /> : <LoginPage />;
+    if (page === 'codebuilder') return user ? <CodeBuilderGame /> : <LoginPage />;
+    if (page === 'cssbattle') return user ? <CSSBattleGame /> : <LoginPage />;
+    if (page === 'typeracer') return user ? <TypeRacerGame /> : <LoginPage />;
+    if (page === 'debugdetective') return user ? <DebugDetectiveGame /> : <LoginPage />;
+    if (page === 'algovisual') return user ? <AlgoVisualGame /> : <LoginPage />;
+    return <HomePage />;
+  };
+
+  return (
+    <>
+      <Navbar />
+      {renderPage()}
+      <SiteFooter />
+      <TutorialModal open={showTutorial} onClose={closeTutorial} />
+    </>
+  );
+}
+
+// =================== MOUNT ===================
+function Root() {
+  return (
+    <AppProvider>
+      <App />
+    </AppProvider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Root />);
+</script>
+</body>
+</html>
