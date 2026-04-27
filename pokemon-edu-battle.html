@@ -545,8 +545,15 @@ footer {
   color: #64748b;
   letter-spacing: 1px;
   font-family: 'Courier New', monospace;
+  line-height: 1.7;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
 }
 footer a { color: #22d3ee; text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+footer .crew { color: #22d3ee; font-weight: bold; }
+footer .reserved { display: block; margin-top: 6px; color: #475569; font-size: 0.55rem; }
 </style>
 </head>
 <body>
@@ -672,9 +679,10 @@ footer a { color: #22d3ee; text-decoration: none; }
 </div>
 
 <footer>
-  PokéCode v2.0 · Aluno(a)s do curso de
-  <a href="https://www.unisanta.br" target="_blank" rel="noopener">Unisanta</a>
-  · MIT License
+  PokéCode v2.0 · Feito por alunos da
+  <a href="https://www.unisanta.br" target="_blank" rel="noopener">Unisanta</a> —
+  <span class="crew">JP</span>, <span class="crew">Igor</span> e <span class="crew">Giovanni</span>.
+  <span class="reserved">© 2026 — Todos os direitos reservados à Universidade Santa Cecília (Unisanta).</span>
 </footer>
 
 <script>
