@@ -235,6 +235,44 @@ function AppProvider({ children }) {
     const saved = sessionStorage.getItem('techfair_scores');
     return saved ? JSON.parse(saved) : {};
   });
+  // times: { codebuilder: 67, cssbattle: 82, ... } em segundos — melhor tempo do visitante atual.
+  const [times, setTimes] = useState(() => {
+    const saved = sessionStorage.getItem('techfair_times');
+    return saved ? JSON.parse(saved) : {};
+  });
+  // Ranking GLOBAL — busca/grava via /api/ranking (Cloudflare Pages Function + KV).
+  // Fallback automático pra localStorage se a API estiver indisponível (Wi-Fi caiu, etc.).
+  // Cada item: { id, name, scores, times, totalScore, totalTime, completedGames, completedAt }
+  const [ranking, setRanking] = useState(() => {
+    try {
+      const cached = localStorage.getItem('techfair_ranking_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  const [rankingOnline, setRankingOnline] = useState(false);
+
+  // Busca ranking remoto e atualiza o cache local. Roda no mount + a cada 20s.
+  useEffect(() => {
+    let alive = true;
+    const fetchRanking = async () => {
+      try {
+        const r = await fetch('/api/ranking', { cache: 'no-store' });
+        if (!r.ok) throw new Error('http ' + r.status);
+        const data = await r.json();
+        if (!alive) return;
+        const list = Array.isArray(data) ? data : (data.ranking || []);
+        setRanking(list);
+        setRankingOnline(true);
+        try { localStorage.setItem('techfair_ranking_cache', JSON.stringify(list)); } catch {}
+      } catch (err) {
+        if (!alive) return;
+        setRankingOnline(false);
+      }
+    };
+    fetchRanking();
+    const id = setInterval(fetchRanking, 20000);
+    return () => { alive = false; clearInterval(id); };
+  }, []);
   // Tutorial — abre automaticamente na primeira visita (chave em localStorage).
   // Visitantes seguintes podem reabrir pelo botão "Como funciona" da navbar.
   const [showTutorial, setShowTutorial] = useState(() => {
@@ -247,16 +285,21 @@ function AppProvider({ children }) {
   const openTutorial = () => setShowTutorial(true);
 
   const login = (name) => {
-    const userData = { name, joinedAt: new Date().toISOString() };
+    const userData = { name, joinedAt: new Date().toISOString(), id: Date.now().toString(36) };
     sessionStorage.setItem('techfair_user', JSON.stringify(userData));
     setUser(userData);
     setPage('hub');
   };
 
   const logout = () => {
-    sessionStorage.clear();
+    // Salva o ranking ANTES de limpar a sessão.
+    saveRankingEntry();
+    sessionStorage.removeItem('techfair_user');
+    sessionStorage.removeItem('techfair_scores');
+    sessionStorage.removeItem('techfair_times');
     setUser(null);
     setScores({});
+    setTimes({});
     setPage('home');
   };
 
@@ -266,12 +309,131 @@ function AppProvider({ children }) {
     setScores(newScores);
   };
 
+  // Salva tempo de conclusão (em segundos). Mantém só o melhor (menor) tempo.
+  const addTime = (game, seconds) => {
+    const prev = times[game];
+    const best = prev == null ? seconds : Math.min(prev, seconds);
+    const newTimes = { ...times, [game]: best };
+    sessionStorage.setItem('techfair_times', JSON.stringify(newTimes));
+    setTimes(newTimes);
+  };
+
+  // Salva (ou atualiza) a entrada do visitante atual no ranking GLOBAL via /api/ranking.
+  // Idempotente — chamado a cada conclusão de jogo + no logout.
+  // Em caso de falha de rede, persiste localmente pra tentar de novo no próximo ciclo.
+  const saveRankingEntry = async () => {
+    if (!user) return;
+    const completedGames = Object.keys(scores).length;
+    if (completedGames === 0) return;
+    const tScore = Object.values(scores).reduce((a, b) => a + b, 0);
+    const tTime = Object.values(times).reduce((a, b) => a + (b || 0), 0);
+    const entry = {
+      id: user.id,
+      name: user.name,
+      scores: { ...scores },
+      times: { ...times },
+      totalScore: tScore,
+      totalTime: tTime,
+      completedGames,
+      completedAt: new Date().toISOString(),
+    };
+    // Otimismo local: já reflete na UI antes do round-trip.
+    setRanking(prev => prev.filter(r => r.id !== user.id).concat(entry));
+    try {
+      const r = await fetch('/api/ranking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry),
+      });
+      if (!r.ok) throw new Error('http ' + r.status);
+      const data = await r.json();
+      const list = Array.isArray(data) ? data : (data.ranking || []);
+      setRanking(list);
+      setRankingOnline(true);
+      try { localStorage.setItem('techfair_ranking_cache', JSON.stringify(list)); } catch {}
+    } catch (err) {
+      setRankingOnline(false);
+      // mantém o estado otimista; um próximo poll de 20s tenta sincronizar
+    }
+  };
+
+  const clearRanking = async () => {
+    if (!confirm('Apagar TODO o ranking global? Essa ação não pode ser desfeita e afeta todos os visitantes.')) return;
+    try {
+      const r = await fetch('/api/ranking', { method: 'DELETE' });
+      if (!r.ok) throw new Error('http ' + r.status);
+      setRanking([]);
+      try { localStorage.removeItem('techfair_ranking_cache'); } catch {}
+    } catch (err) {
+      alert('Falha ao limpar o ranking remoto. Tente novamente.');
+    }
+  };
+
   const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+  const totalTime = Object.values(times).reduce((a, b) => a + (b || 0), 0);
 
   return (
-    <AppContext.Provider value={{ user, login, logout, page, setPage, scores, addScore, totalScore, showTutorial, closeTutorial, openTutorial }}>
+    <AppContext.Provider value={{
+      user, login, logout, page, setPage,
+      scores, addScore, totalScore,
+      times, addTime, totalTime,
+      ranking, rankingOnline, saveRankingEntry, clearRanking,
+      showTutorial, closeTutorial, openTutorial,
+    }}>
       {children}
     </AppContext.Provider>
+  );
+}
+
+/* ============================================================
+   useGameTimer — hook reutilizável: cronômetro em segundos.
+   Auto-inicia ao montar, expõe { elapsed, stop, reset }.
+   ============================================================ */
+function useGameTimer(autoStart = true) {
+  const [elapsed, setElapsed] = useState(0);
+  const [running, setRunning] = useState(autoStart);
+  const startRef = useRef(null);
+
+  useEffect(() => {
+    if (!running) return;
+    if (startRef.current == null) startRef.current = Date.now();
+    const id = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
+    }, 250);
+    return () => clearInterval(id);
+  }, [running]);
+
+  const stop = () => setRunning(false);
+  const reset = () => { startRef.current = Date.now(); setElapsed(0); setRunning(true); };
+
+  return { elapsed, stop, reset, running };
+}
+
+/* ============================================================
+   Helpers de formatação de tempo.
+   ============================================================ */
+function formatTime(seconds) {
+  if (seconds == null) return '—';
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+/* ============================================================
+   <TimerPill /> — pílula de cronômetro pra cabeçalho dos jogos.
+   ============================================================ */
+function TimerPill({ seconds }) {
+  return (
+    <div title="Cronômetro" style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      padding: '4px 10px', borderRadius: 8,
+      background: 'rgba(168,85,247,0.10)', border: '1px solid rgba(168,85,247,0.30)',
+      fontFamily: 'Space Mono', fontSize: 13, color: 'var(--purple)',
+      fontVariantNumeric: 'tabular-nums',
+    }}>
+      <span>⏱</span>
+      <span>{formatTime(seconds)}</span>
+    </div>
   );
 }
 
@@ -328,6 +490,9 @@ function Navbar() {
         {user && page !== 'hub' && (
           <button className="btn btn-outline btn-sm" onClick={() => setPage('hub')}>← Hub</button>
         )}
+        <button className="btn btn-sm" onClick={() => setPage('ranking')} title="Ver ranking" style={{ background: 'transparent', color: 'var(--yellow)', border: '1px solid rgba(250,204,21,0.3)', borderRadius: 8 }}>
+          🏆 Ranking
+        </button>
         <button className="btn btn-sm" onClick={openTutorial} title="Reabrir o tutorial" style={{ background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 8 }}>
           ❓ Como funciona
         </button>
@@ -521,7 +686,7 @@ function LoginPage() {
 
 // =================== HUB PAGE ===================
 function HubPage() {
-  const { user, setPage, scores, totalScore } = useContext(AppContext);
+  const { user, setPage, scores, totalScore, times, totalTime } = useContext(AppContext);
 
   const games = [
     { id: 'codebuilder', icon: '🧱', name: 'Code Builder', desc: 'Monte páginas web arrastando blocos HTML', color: 'var(--cyan)', difficulty: 'Fácil', maxScore: 300 },
@@ -541,19 +706,28 @@ function HubPage() {
             <h2 style={{ fontSize: 28, fontWeight: 800, marginTop: 4 }}>Olá, {user?.name}! 👋</h2>
             <p style={{ color: 'var(--text2)', marginTop: 4 }}>Escolha um jogo e comece a acumular pontos.</p>
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 36, fontWeight: 800, color: 'var(--yellow)', fontFamily: 'Space Mono' }}>★ {totalScore}</div>
-            <div style={{ fontSize: 12, color: 'var(--text2)' }}>Pontuação Total</div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--yellow)', fontFamily: 'Space Mono' }}>★ {totalScore}</div>
+              <div style={{ fontSize: 11, color: 'var(--text2)' }}>Pontuação</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--purple)', fontFamily: 'Space Mono' }}>⏱ {formatTime(totalTime)}</div>
+              <div style={{ fontSize: 11, color: 'var(--text2)' }}>Tempo total</div>
+            </div>
+            <button className="btn btn-cyan" onClick={() => setPage('ranking')} title="Ver ranking da máquina">
+              🏆 Ranking
+            </button>
           </div>
         </div>
 
         {/* Scores overview */}
         <div style={{ display: 'flex', gap: 12, marginBottom: 32, flexWrap: 'wrap' }}>
           {games.map(g => (
-            <div key={g.id} style={{ background: 'var(--bg2)', border: `1px solid ${g.color}20`, borderRadius: 8, padding: '8px 14px', minWidth: 100, textAlign: 'center' }}>
+            <div key={g.id} style={{ background: 'var(--bg2)', border: `1px solid ${g.color}20`, borderRadius: 8, padding: '8px 14px', minWidth: 110, textAlign: 'center' }}>
               <div style={{ fontSize: 18 }}>{g.icon}</div>
-              <div style={{ fontFamily: 'Space Mono', fontSize: 13, color: g.color, fontWeight: 700 }}>{scores[g.id] || 0}</div>
-              <div style={{ fontSize: 10, color: 'var(--text2)' }}>/{g.maxScore}</div>
+              <div style={{ fontFamily: 'Space Mono', fontSize: 13, color: g.color, fontWeight: 700 }}>{scores[g.id] || 0}<span style={{ fontSize: 9, color: 'var(--text2)' }}>/{g.maxScore}</span></div>
+              <div style={{ fontFamily: 'Space Mono', fontSize: 10, color: 'var(--purple)', marginTop: 2 }}>⏱ {formatTime(times[g.id])}</div>
             </div>
           ))}
         </div>
@@ -587,12 +761,13 @@ function HubPage() {
 
 // =================== GAME 1: CODE BUILDER ===================
 function CodeBuilderGame() {
-  const { addScore, setPage } = useContext(AppContext);
+  const { addScore, addTime, saveRankingEntry, setPage } = useContext(AppContext);
   const [placed, setPlaced] = useState([]);
   const [dragging, setDragging] = useState(null);
   const [score, setScore] = useState(0);
   const [phase, setPhase] = useState(0);
   const [showResult, setShowResult] = useState(false);
+  const timer = useGameTimer();
 
   const phases = [
     {
@@ -656,7 +831,10 @@ function CodeBuilderGame() {
     setPlaced([]);
     if (phase < phases.length - 1) { setPhase(p => p + 1); }
     else {
+      timer.stop();
       addScore('codebuilder', score);
+      addTime('codebuilder', timer.elapsed);
+      setTimeout(() => saveRankingEntry(), 50);
       setShowResult(true);
     }
   };
@@ -672,6 +850,7 @@ function CodeBuilderGame() {
           <p style={{ color: 'var(--text2)', fontSize: 13, marginTop: 2 }}>Fase {phase + 1}/{phases.length}: {currentPhase.label}</p>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <TimerPill seconds={timer.elapsed} />
           <div className="score-badge">★ {score}</div>
           <button className="btn btn-sm" onClick={() => setPage('hub')} style={{ background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 8 }}>← Sair</button>
         </div>
@@ -791,9 +970,10 @@ function CodeBuilderGame() {
 
 // =================== GAME 2: CSS BATTLE ===================
 function CSSBattleGame() {
-  const { addScore, setPage } = useContext(AppContext);
+  const { addScore, addTime, saveRankingEntry, setPage } = useContext(AppContext);
   const [props, setProps] = useState({ width: 100, height: 100, borderRadius: 0, bg: '#22d3ee', marginLeft: 0 });
   const [phase, setPhase] = useState(0);
+  const timer = useGameTimer();
   const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
 
@@ -825,7 +1005,10 @@ function CSSBattleGame() {
     setProps({ width: 100, height: 100, borderRadius: 0, bg: '#22d3ee', marginLeft: 0 });
     if (phase < phases.length - 1) setPhase(p => p + 1);
     else {
+      timer.stop();
       addScore('cssbattle', score + pts);
+      addTime('cssbattle', timer.elapsed);
+      setTimeout(() => saveRankingEntry(), 50);
       setShowResult(true);
     }
   };
@@ -851,6 +1034,7 @@ function CSSBattleGame() {
           <p style={{ color: 'var(--text2)', fontSize: 13, marginTop: 2 }}>Fase {phase + 1}/{phases.length}: {phases[phase].label}</p>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <TimerPill seconds={timer.elapsed} />
           <div className="score-badge">★ {score}</div>
           <button className="btn btn-sm" onClick={() => setPage('hub')} style={{ background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 8 }}>← Sair</button>
         </div>
@@ -935,9 +1119,10 @@ function CSSBattleGame() {
 
 // =================== GAME 3: TYPE RACER ===================
 function TypeRacerGame() {
-  const { addScore, setPage } = useContext(AppContext);
+  const { addScore, addTime, saveRankingEntry, setPage } = useContext(AppContext);
   const [status, setStatus] = useState('idle');
   const [input, setInput] = useState('');
+  const timer = useGameTimer();
   const [startTime, setStartTime] = useState(null);
   const [elapsed, setElapsed] = useState(0);
   const [phaseIdx, setPhaseIdx] = useState(0);
@@ -991,7 +1176,10 @@ function TypeRacerGame() {
       setInput('');
       setStatus('idle');
     } else {
+      timer.stop();
       addScore('typeracer', score);
+      addTime('typeracer', timer.elapsed);
+      setTimeout(() => saveRankingEntry(), 50);
       setShowResult(true);
     }
   };
@@ -1034,6 +1222,7 @@ function TypeRacerGame() {
           <p style={{ color: 'var(--text2)', fontSize: 13, marginTop: 2 }}>Snippet {phaseIdx + 1}/{snippets.length}</p>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <TimerPill seconds={timer.elapsed} />
           {status === 'playing' && (
             <>
               <div style={{ fontFamily: 'Space Mono', fontSize: 13, color: 'var(--cyan)' }}>{getWPM()} WPM</div>
@@ -1125,9 +1314,10 @@ function TypeRacerGame() {
 
 // =================== GAME 4: DEBUG DETECTIVE ===================
 function DebugDetectiveGame() {
-  const { addScore, setPage } = useContext(AppContext);
+  const { addScore, addTime, saveRankingEntry, setPage } = useContext(AppContext);
   const [phase, setPhase] = useState(0);
   const [score, setScore] = useState(0);
+  const timer = useGameTimer();
   const [found, setFound] = useState([]);
   const [showResult, setShowResult] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -1181,7 +1371,10 @@ function DebugDetectiveGame() {
     setFeedback('');
     if (phase < challenges.length - 1) setPhase(p => p + 1);
     else {
+      timer.stop();
       addScore('debugdetective', score);
+      addTime('debugdetective', timer.elapsed);
+      setTimeout(() => saveRankingEntry(), 50);
       setShowResult(true);
     }
   };
@@ -1194,6 +1387,7 @@ function DebugDetectiveGame() {
           <p style={{ color: 'var(--text2)', fontSize: 13, marginTop: 2 }}>Caso {phase + 1}/{challenges.length}: {currentChallenge.label}</p>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <TimerPill seconds={timer.elapsed} />
           <div style={{ fontFamily: 'Space Mono', fontSize: 13, color: 'var(--red)' }}>🐛 {found.length}/{bugLines.length}</div>
           <div className="score-badge">★ {score}</div>
           <button className="btn btn-sm" onClick={() => setPage('hub')} style={{ background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 8 }}>← Sair</button>
@@ -1263,9 +1457,10 @@ function DebugDetectiveGame() {
 
 // =================== GAME 5: ALGO VISUAL ===================
 function AlgoVisualGame() {
-  const { addScore, setPage } = useContext(AppContext);
+  const { addScore, addTime, saveRankingEntry, setPage } = useContext(AppContext);
   const GRID = 8;
   const [code, setCode] = useState('');
+  const timer = useGameTimer();
   const [charPos, setCharPos] = useState({ x: 0, y: 0 });
   const [running, setRunning] = useState(false);
   const [log, setLog] = useState([]);
@@ -1397,7 +1592,10 @@ function AlgoVisualGame() {
   const nextPhase = () => {
     if (phase < phases.length - 1) setPhase(p => p + 1);
     else {
+      timer.stop();
       addScore('algovisual', score);
+      addTime('algovisual', timer.elapsed);
+      setTimeout(() => saveRankingEntry(), 50);
       setShowResult(true);
     }
   };
@@ -1430,6 +1628,7 @@ function AlgoVisualGame() {
           <p style={{ color: 'var(--text2)', fontSize: 13, marginTop: 2 }}>Fase {phase + 1}/{phases.length}</p>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <TimerPill seconds={timer.elapsed} />
           <div className="score-badge">★ {score}</div>
           <button className="btn btn-sm" onClick={() => setPage('hub')} style={{ background: 'transparent', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 8 }}>← Sair</button>
         </div>
@@ -1516,6 +1715,174 @@ function AlgoVisualGame() {
   );
 }
 
+// =================== RANKING PAGE ===================
+function RankingPage() {
+  const { user, ranking, rankingOnline, setPage, clearRanking } = useContext(AppContext);
+  const [tab, setTab] = useState('overall');
+
+  const games = [
+    { id: 'codebuilder', icon: '🧱', name: 'Code Builder', color: 'var(--cyan)' },
+    { id: 'cssbattle', icon: '🎯', name: 'CSS Battle', color: 'var(--purple)' },
+    { id: 'typeracer', icon: '⌨️', name: 'Type Racer', color: 'var(--pink)' },
+    { id: 'debugdetective', icon: '🕵️', name: 'Debug Detective', color: 'var(--green)' },
+    { id: 'algovisual', icon: '🧠', name: 'Algoritmo Visual', color: 'var(--yellow)' },
+  ];
+
+  // Ordenação: mais jogos completos > maior pontuação > menor tempo total
+  const overall = [...ranking].sort((a, b) => {
+    if (b.completedGames !== a.completedGames) return b.completedGames - a.completedGames;
+    if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+    return a.totalTime - b.totalTime;
+  });
+
+  // Ranking por jogo individual: filtra só quem jogou aquele, ordena por score desc, tempo asc
+  const perGame = (gameId) => ranking
+    .filter(r => r.scores[gameId] != null)
+    .map(r => ({ id: r.id, name: r.name, score: r.scores[gameId], time: r.times[gameId] || 0 }))
+    .sort((a, b) => b.score - a.score || a.time - b.time);
+
+  const medal = (i) => i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`;
+
+  return (
+    <div className="grid-bg" style={{ minHeight: '100vh', paddingTop: 64 }}>
+      <div style={{ maxWidth: 980, margin: '0 auto', padding: '40px 32px' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <p style={{ color: 'var(--text2)', fontSize: 13, fontFamily: 'Space Mono', display: 'flex', alignItems: 'center', gap: 8 }}>
+              // LEADERBOARD
+              <span title={rankingOnline ? 'Sincronizado com o servidor' : 'Modo offline (cache local)'} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                fontSize: 10, padding: '2px 8px', borderRadius: 10,
+                background: rankingOnline ? 'rgba(74,222,128,0.10)' : 'rgba(248,113,113,0.10)',
+                border: rankingOnline ? '1px solid rgba(74,222,128,0.3)' : '1px solid rgba(248,113,113,0.3)',
+                color: rankingOnline ? 'var(--green)' : 'var(--red)',
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />
+                {rankingOnline ? 'AO VIVO' : 'OFFLINE'}
+              </span>
+            </p>
+            <h1 style={{ fontSize: 32, fontWeight: 800, marginTop: 4 }}>🏆 Ranking Global</h1>
+            <p style={{ color: 'var(--text2)', fontSize: 13, marginTop: 4 }}>
+              {ranking.length === 0 ? 'Ainda sem entradas. Complete um minigame pra entrar.'
+                : `${ranking.length} ${ranking.length === 1 ? 'visitante' : 'visitantes'} no ranking — atualiza a cada 20s.`}
+            </p>
+          </div>
+          <button className="btn btn-outline btn-sm" onClick={() => setPage('hub')}>← Voltar ao Hub</button>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap', borderBottom: '1px solid var(--border)' }}>
+          <button onClick={() => setTab('overall')}
+            style={{ padding: '10px 16px', background: 'transparent', border: 'none', cursor: 'pointer',
+              color: tab === 'overall' ? 'var(--cyan)' : 'var(--text2)',
+              borderBottom: tab === 'overall' ? '2px solid var(--cyan)' : '2px solid transparent',
+              fontFamily: 'Space Mono', fontSize: 13, fontWeight: 700 }}>
+            🌟 Geral
+          </button>
+          {games.map(g => (
+            <button key={g.id} onClick={() => setTab(g.id)}
+              style={{ padding: '10px 14px', background: 'transparent', border: 'none', cursor: 'pointer',
+                color: tab === g.id ? g.color : 'var(--text2)',
+                borderBottom: tab === g.id ? `2px solid ${g.color}` : '2px solid transparent',
+                fontFamily: 'Space Mono', fontSize: 12 }}>
+              {g.icon} {g.name}
+            </button>
+          ))}
+        </div>
+
+        {/* Conteúdo da tab */}
+        {tab === 'overall' ? (
+          overall.length === 0 ? (
+            <div className="card" style={{ textAlign: 'center', padding: 40, color: 'var(--text2)' }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🎯</div>
+              <p>O ranking começa quando alguém completar o primeiro minigame.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {overall.slice(0, 30).map((row, i) => {
+                const isMe = user && row.id === user.id;
+                return (
+                  <div key={row.id} style={{
+                    display: 'grid', gridTemplateColumns: '60px 1fr auto auto auto', gap: 16, alignItems: 'center',
+                    padding: '14px 18px', borderRadius: 10,
+                    background: isMe ? 'rgba(34,211,238,0.08)' : 'var(--bg2)',
+                    border: isMe ? '1px solid rgba(34,211,238,0.4)' : '1px solid var(--border)',
+                  }}>
+                    <div style={{ fontSize: i < 3 ? 24 : 16, textAlign: 'center', fontFamily: 'Space Mono', fontWeight: 700, color: i < 3 ? 'var(--yellow)' : 'var(--text2)' }}>{medal(i)}</div>
+                    <div>
+                      <div style={{ fontSize: 16, fontWeight: 700 }}>{row.name} {isMe && <span style={{ fontSize: 11, color: 'var(--cyan)', fontFamily: 'Space Mono' }}>(você)</span>}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'Space Mono' }}>{row.completedGames}/5 jogos · {new Date(row.completedAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontFamily: 'Space Mono', color: 'var(--yellow)', fontSize: 14, fontWeight: 700 }}>★ {row.totalScore}</div>
+                      <div style={{ fontSize: 10, color: 'var(--text2)' }}>pontos</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontFamily: 'Space Mono', color: 'var(--purple)', fontSize: 14, fontWeight: 700 }}>⏱ {formatTime(row.totalTime)}</div>
+                      <div style={{ fontSize: 10, color: 'var(--text2)' }}>tempo</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {games.map(g => (
+                        <span key={g.id} title={`${g.name}: ${row.scores[g.id] || '—'} pts`}
+                          style={{ width: 18, height: 18, borderRadius: 4, background: row.scores[g.id] != null ? g.color : 'var(--bg3)', opacity: row.scores[g.id] != null ? 0.85 : 0.25 }} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )
+        ) : (
+          // Per-game tab
+          (() => {
+            const list = perGame(tab);
+            const game = games.find(g => g.id === tab);
+            if (list.length === 0) return (
+              <div className="card" style={{ textAlign: 'center', padding: 40, color: 'var(--text2)' }}>
+                Ninguém completou {game.name} ainda. Seja o primeiro!
+              </div>
+            );
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {list.slice(0, 30).map((row, i) => {
+                  const isMe = user && row.id === user.id;
+                  return (
+                    <div key={row.id + tab} style={{
+                      display: 'grid', gridTemplateColumns: '60px 1fr auto auto', gap: 16, alignItems: 'center',
+                      padding: '12px 18px', borderRadius: 10,
+                      background: isMe ? `color-mix(in srgb, ${game.color} 12%, transparent)` : 'var(--bg2)',
+                      border: isMe ? `1px solid ${game.color}` : '1px solid var(--border)',
+                    }}>
+                      <div style={{ fontSize: i < 3 ? 22 : 14, textAlign: 'center', fontFamily: 'Space Mono', fontWeight: 700, color: i < 3 ? 'var(--yellow)' : 'var(--text2)' }}>{medal(i)}</div>
+                      <div style={{ fontSize: 15, fontWeight: 700 }}>{row.name} {isMe && <span style={{ fontSize: 11, color: game.color, fontFamily: 'Space Mono' }}>(você)</span>}</div>
+                      <div style={{ fontFamily: 'Space Mono', color: game.color, fontSize: 14, fontWeight: 700, textAlign: 'right' }}>★ {row.score}</div>
+                      <div style={{ fontFamily: 'Space Mono', color: 'var(--purple)', fontSize: 13, textAlign: 'right' }}>⏱ {formatTime(row.time)}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()
+        )}
+
+        {/* Botão admin de reset */}
+        {ranking.length > 0 && (
+          <div style={{ marginTop: 32, textAlign: 'center' }}>
+            <button onClick={clearRanking} style={{
+              background: 'transparent', border: '1px solid rgba(248,113,113,0.3)',
+              color: 'var(--red)', padding: '8px 16px', borderRadius: 8, cursor: 'pointer',
+              fontSize: 12, fontFamily: 'Space Mono',
+            }}>
+              ⚠ Limpar ranking desta máquina
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // =================== APP ROUTER ===================
 function SiteFooter() {
   const { logout } = useContext(AppContext);
@@ -1550,6 +1917,7 @@ function App() {
     if (page === 'typeracer') return user ? <TypeRacerGame /> : <LoginPage />;
     if (page === 'debugdetective') return user ? <DebugDetectiveGame /> : <LoginPage />;
     if (page === 'algovisual') return user ? <AlgoVisualGame /> : <LoginPage />;
+    if (page === 'ranking') return <RankingPage />;
     return <HomePage />;
   };
 
