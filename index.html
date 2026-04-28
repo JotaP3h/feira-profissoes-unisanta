@@ -12,12 +12,11 @@
 <meta property="og:description" content="3 experiências interativas para apresentar carreiras em tecnologia.">
 <meta property="og:type" content="website">
 
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>" />
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-<!-- Spline 3D viewer (carregamento lazy via type=module) -->
-<script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.48/build/spline-viewer.js"></script>
 
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -38,6 +37,9 @@
     --border:      rgba(255,255,255,0.08);
     --border-2:    rgba(255,255,255,0.12);
     --glass:       rgba(11,14,31,0.55);
+    /* Posição do cursor — atualizada por JS para o spotlight do grid */
+    --mx: 50%;
+    --my: 50%;
   }
 
   html, body { height: 100%; }
@@ -49,115 +51,52 @@
     font-weight: 400;
     line-height: 1.5;
     overflow-x: hidden;
-    cursor: none; /* cursor customizado */
   }
-  @media (hover: none) { body { cursor: auto; } .cursor, .cursor-dot { display: none; } }
 
   ::selection { background: var(--cyan); color: var(--bg-0); }
 
-  /* ============ CURSOR CUSTOMIZADO ============ */
-  .cursor {
-    position: fixed; top: 0; left: 0;
-    width: 32px; height: 32px;
-    border: 1.5px solid var(--cyan);
-    border-radius: 50%;
-    pointer-events: none;
-    transform: translate(-50%, -50%);
-    transition: width 0.2s, height 0.2s, border-color 0.2s, background 0.2s;
-    z-index: 9999;
-    mix-blend-mode: difference;
-  }
-  .cursor-dot {
-    position: fixed; top: 0; left: 0;
-    width: 5px; height: 5px;
-    background: var(--cyan);
-    border-radius: 50%;
-    pointer-events: none;
-    transform: translate(-50%, -50%);
-    z-index: 10000;
-    box-shadow: 0 0 12px var(--cyan-glow);
-  }
-  .cursor.is-hover {
-    width: 60px; height: 60px;
-    border-color: var(--purple);
-    background: rgba(168,85,247,0.08);
-  }
+  /* ============ FUNDO — grid base + spotlight seguindo o cursor ============ */
 
-  /* ============ FUNDOS — Spline + grid + orbs ============ */
-  .spline-bg {
-    position: fixed; inset: 0;
-    z-index: 0;
-    opacity: 0;
-    transition: opacity 1.2s ease;
+  /* Camada 1: grid sutil sempre visível (linhas brancas baixíssima opacidade) */
+  .grid-base {
+    position: fixed; inset: 0; z-index: 0;
     pointer-events: none;
-  }
-  .spline-bg.is-loaded { opacity: 0.55; }
-  .spline-bg spline-viewer {
-    width: 100%; height: 100%;
-    display: block;
-  }
-  /* esconde a marca d'água do spline-viewer quando renderizado */
-  .spline-bg::after {
-    content: '';
-    position: absolute;
-    bottom: 0; right: 0;
-    width: 220px; height: 80px;
-    background: var(--bg-0);
-    z-index: 2;
-    pointer-events: none;
-  }
-
-  .grid-bg {
-    position: fixed; inset: 0; z-index: 1;
     background-image:
-      linear-gradient(rgba(34,211,238,0.06) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(34,211,238,0.06) 1px, transparent 1px);
-    background-size: 64px 64px;
-    mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, #000 30%, transparent 80%);
-    pointer-events: none;
+      linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 56px 56px;
+    background-position: -1px -1px;
   }
 
-  .orbs {
+  /* Camada 2: grid CIANO mais brilhante — mascarado por radial seguindo o cursor.
+     A máscara revela só onde o mouse está, criando o efeito spotlight. */
+  .grid-spot {
     position: fixed; inset: 0; z-index: 1;
-    overflow: hidden;
     pointer-events: none;
+    background-image:
+      linear-gradient(var(--cyan) 1px, transparent 1px),
+      linear-gradient(90deg, var(--cyan) 1px, transparent 1px);
+    background-size: 56px 56px;
+    background-position: -1px -1px;
+    opacity: 0.45;
+    -webkit-mask-image: radial-gradient(circle 320px at var(--mx) var(--my), #000 0%, transparent 75%);
+            mask-image: radial-gradient(circle 320px at var(--mx) var(--my), #000 0%, transparent 75%);
   }
-  .orb {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(90px);
-    opacity: 0.7;
-    will-change: transform;
-  }
-  .orb-1 {
-    top: -10%; left: -10%;
-    width: 460px; height: 460px;
-    background: radial-gradient(circle, var(--cyan), transparent 65%);
-    animation: orb-drift-1 22s ease-in-out infinite alternate;
-  }
-  .orb-2 {
-    bottom: -15%; right: -10%;
-    width: 520px; height: 520px;
-    background: radial-gradient(circle, var(--purple), transparent 65%);
-    animation: orb-drift-2 26s ease-in-out infinite alternate;
-  }
-  .orb-3 {
-    top: 40%; left: 40%;
-    width: 280px; height: 280px;
-    background: radial-gradient(circle, var(--pink), transparent 65%);
-    opacity: 0.4;
-    animation: orb-drift-3 30s ease-in-out infinite alternate;
-  }
-  @keyframes orb-drift-1 { from { transform: translate(0,0) scale(1); } to { transform: translate(120px,80px) scale(1.2); } }
-  @keyframes orb-drift-2 { from { transform: translate(0,0) scale(1); } to { transform: translate(-100px,-60px) scale(0.9); } }
-  @keyframes orb-drift-3 { from { transform: translate(0,0); } to { transform: translate(60px,-100px); } }
 
-  /* Camada de grão sutil */
-  .noise {
+  /* Glow ciano suave seguindo o mouse — dá uma "luz" no fundo */
+  .cursor-glow {
     position: fixed; inset: 0; z-index: 2;
     pointer-events: none;
-    opacity: 0.04;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background: radial-gradient(circle 500px at var(--mx) var(--my),
+      rgba(34,211,238,0.06),
+      transparent 60%);
+  }
+
+  /* Vinheta sutil para focar a atenção no centro */
+  .vignette {
+    position: fixed; inset: 0; z-index: 3;
+    pointer-events: none;
+    background: radial-gradient(ellipse 100% 80% at 50% 100%, transparent 60%, rgba(0,0,0,0.4));
   }
 
   /* ============ NAV ============ */
@@ -344,13 +283,13 @@
     background: linear-gradient(90deg, transparent, var(--accent), transparent);
     opacity: 0.6;
   }
-  /* Glow seguidor do mouse */
+  /* Glow seguidor do mouse — DENTRO do card (separado do spotlight do fundo) */
   .card::after {
     content: '';
     position: absolute;
     inset: 0;
     background: radial-gradient(
-      400px circle at var(--mx, 50%) var(--my, 50%),
+      400px circle at var(--cmx, 50%) var(--cmy, 50%),
       color-mix(in srgb, var(--accent) 18%, transparent),
       transparent 60%
     );
@@ -469,6 +408,12 @@
     .scroll-hint { margin-top: 32px; }
     .cards { gap: 18px; }
     .card { padding: 26px 22px 22px; }
+    /* Em mobile/touch o spotlight do mouse não faz sentido */
+    .grid-spot, .cursor-glow { display: none; }
+  }
+
+  @media (hover: none) {
+    .grid-spot, .cursor-glow { display: none; }
   }
 
   /* Acessibilidade — usuários com motion reduzido */
@@ -484,23 +429,11 @@
 </head>
 <body>
 
-<!-- Cursor customizado -->
-<div class="cursor" id="cursor"></div>
-<div class="cursor-dot" id="cursor-dot"></div>
-
-<!-- Spline 3D background (lazy) -->
-<div class="spline-bg" id="spline-bg">
-  <spline-viewer url="https://prod.spline.design/Slk6b8kz3LRlKiyk/scene.splinecode"></spline-viewer>
-</div>
-
-<!-- Camadas decorativas -->
-<div class="grid-bg" aria-hidden="true"></div>
-<div class="orbs" aria-hidden="true">
-  <div class="orb orb-1"></div>
-  <div class="orb orb-2"></div>
-  <div class="orb orb-3"></div>
-</div>
-<div class="noise" aria-hidden="true"></div>
+<!-- Camadas de fundo: grid base + spotlight ciano + glow + vinheta -->
+<div class="grid-base" aria-hidden="true"></div>
+<div class="grid-spot" aria-hidden="true"></div>
+<div class="cursor-glow" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
 
 <!-- Navbar -->
 <nav class="top">
@@ -540,7 +473,7 @@
 
   <section class="cards" id="cards">
 
-    <a href="feira-profissoes.html" class="card" data-color="cyan" data-hover>
+    <a href="feira-profissoes.html" class="card" data-color="cyan">
       <div class="card-content">
         <div class="card-icon">🎮</div>
         <span class="card-tag">5 minigames</span>
@@ -554,7 +487,7 @@
       </div>
     </a>
 
-    <a href="pokemon-edu-battle.html" class="card" data-color="pink" data-hover>
+    <a href="pokemon-edu-battle.html" class="card" data-color="pink">
       <div class="card-content">
         <div class="card-icon">⚡</div>
         <span class="card-tag">Game Boy style</span>
@@ -568,7 +501,7 @@
       </div>
     </a>
 
-    <a href="https://unifront-unisanta.pages.dev" class="card" data-color="purple" data-hover target="_blank" rel="noopener">
+    <a href="https://unifront-unisanta.pages.dev" class="card" data-color="purple" target="_blank" rel="noopener">
       <div class="card-content">
         <div class="card-icon">🌌</div>
         <span class="card-tag">Front-end moderno</span>
@@ -594,47 +527,36 @@
 
 <script>
   /* =========================================================
-     1) CURSOR CUSTOMIZADO — segue o mouse com easing
+     1) SPOTLIGHT DO GRID — segue o mouse instantaneamente.
+        Só atualiza CSS variables; o navegador faz o resto na GPU.
      ========================================================= */
   (() => {
-    const cursor = document.getElementById('cursor');
-    const dot    = document.getElementById('cursor-dot');
-    if (!cursor || !dot) return;
-
-    let mx = window.innerWidth / 2, my = window.innerHeight / 2;
-    let cx = mx, cy = my;
+    const root = document.documentElement;
+    let raf = 0;
+    let nx = window.innerWidth / 2, ny = window.innerHeight / 2;
 
     window.addEventListener('mousemove', (e) => {
-      mx = e.clientX; my = e.clientY;
-      // O ponto interno acompanha imediatamente; o anel tem easing.
-      dot.style.transform = `translate(${mx}px, ${my}px) translate(-50%, -50%)`;
-    });
-
-    function tick() {
-      cx += (mx - cx) * 0.18;
-      cy += (my - cy) * 0.18;
-      cursor.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%)`;
-      requestAnimationFrame(tick);
-    }
-    tick();
-
-    // Hover-state em elementos interativos
-    document.querySelectorAll('a, button, [data-hover]').forEach(el => {
-      el.addEventListener('mouseenter', () => cursor.classList.add('is-hover'));
-      el.addEventListener('mouseleave', () => cursor.classList.remove('is-hover'));
-    });
+      nx = e.clientX; ny = e.clientY;
+      // Coalesce em rAF pra não sobrecarregar — mesmo assim continua "instantâneo"
+      // porque o rAF roda no próximo frame (~16ms).
+      if (!raf) {
+        raf = requestAnimationFrame(() => {
+          root.style.setProperty('--mx', nx + 'px');
+          root.style.setProperty('--my', ny + 'px');
+          raf = 0;
+        });
+      }
+    }, { passive: true });
   })();
 
   /* =========================================================
-     2) TYPEWRITER — alterna palavras-chave no headline
+     2) TYPEWRITER — alterna palavras-chave no headline.
      ========================================================= */
   (() => {
     const target = document.getElementById('typed');
     if (!target) return;
     const words = ['tecnologia', 'programação', 'front-end', 'design', 'código', 'futuro'];
-    let wordIdx = 0;
-    let charIdx = 0;
-    let deleting = false;
+    let wordIdx = 0, charIdx = 0, deleting = false;
 
     function step() {
       const current = words[wordIdx];
@@ -659,7 +581,8 @@
   })();
 
   /* =========================================================
-     3) CARDS COM TILT 3D + GLOW SEGUIDOR DO MOUSE
+     3) CARDS COM TILT 3D + GLOW INTERNO SEGUINDO O MOUSE.
+        Usa --cmx/--cmy (separadas das vars do fundo --mx/--my).
      ========================================================= */
   (() => {
     const cards = document.querySelectorAll('.card');
@@ -675,48 +598,27 @@
         const cx = rect.width / 2;
         const cy = rect.height / 2;
 
-        // Rotação proporcional à distância do centro (max ±9deg)
         const rotateX = ((y - cy) / cy) * -9;
         const rotateY = ((x - cx) / cx) * 9;
-
-        // Posição do glow (em %)
         const mxPct = (x / rect.width) * 100;
         const myPct = (y / rect.height) * 100;
 
         cancelAnimationFrame(raf);
         raf = requestAnimationFrame(() => {
           card.style.transform =
-            `perspective(1400px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) translateZ(0)`;
-          card.style.setProperty('--mx', mxPct + '%');
-          card.style.setProperty('--my', myPct + '%');
+            `perspective(1400px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg)`;
+          card.style.setProperty('--cmx', mxPct + '%');
+          card.style.setProperty('--cmy', myPct + '%');
         });
       });
 
       card.addEventListener('mouseleave', () => {
         cancelAnimationFrame(raf);
         card.style.transform = '';
-        card.style.removeProperty('--mx');
-        card.style.removeProperty('--my');
+        card.style.removeProperty('--cmx');
+        card.style.removeProperty('--cmy');
       });
     });
-  })();
-
-  /* =========================================================
-     4) SPLINE — fade-in quando a cena 3D termina de carregar
-     ========================================================= */
-  (() => {
-    const wrap = document.getElementById('spline-bg');
-    if (!wrap) return;
-    const viewer = wrap.querySelector('spline-viewer');
-    if (!viewer) return;
-
-    const reveal = () => wrap.classList.add('is-loaded');
-
-    // O <spline-viewer> dispara o evento 'load' quando a cena 3D fica pronta.
-    viewer.addEventListener('load', reveal, { once: true });
-
-    // Fallback: revela mesmo se o evento não disparar (Wi-Fi lento, bloqueio etc.)
-    setTimeout(reveal, 4500);
   })();
 </script>
 
