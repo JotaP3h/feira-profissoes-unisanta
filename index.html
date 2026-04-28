@@ -4,284 +4,585 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Feira de Profissões 2026 — Unisanta</title>
-<meta name="description" content="Menu interativo dos 3 projetos da Feira de Profissões 2026 da Unisanta — TechFair, PokéCode e UniFront.">
+<meta name="description" content="3 experiências interativas criadas por alunos da Unisanta para apresentar carreiras em tecnologia.">
 <meta name="author" content="JP, Igor e Giovanni — Universidade Santa Cecília (Unisanta)">
-<meta name="theme-color" content="#0a0f1e">
+<meta name="theme-color" content="#05060f">
 
 <meta property="og:title" content="Feira de Profissões 2026 — Unisanta">
-<meta property="og:description" content="3 experiências interativas criadas por alunos da Unisanta para apresentar carreiras em tecnologia.">
+<meta property="og:description" content="3 experiências interativas para apresentar carreiras em tecnologia.">
 <meta property="og:type" content="website">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Spline 3D viewer (carregamento lazy via type=module) -->
+<script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.48/build/spline-viewer.js"></script>
 
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #0a0f1e;
-    --bg2: #0f172a;
-    --bg3: #1e293b;
-    --cyan: #22d3ee;
-    --purple: #a855f7;
-    --green: #4ade80;
-    --pink: #ec4899;
-    --text: #e2e8f0;
-    --text2: #94a3b8;
-    --border: rgba(34,211,238,0.15);
+    --bg-0:        #05060f;
+    --bg-1:        #0b0e1f;
+    --bg-2:        #11152b;
+    --cyan:        #22d3ee;
+    --cyan-glow:   rgba(34,211,238,0.45);
+    --purple:      #a855f7;
+    --purple-glow: rgba(168,85,247,0.4);
+    --pink:        #ec4899;
+    --pink-glow:   rgba(236,72,153,0.4);
+    --green:       #4ade80;
+    --text:        #e5e7ef;
+    --text-2:      #8b94a8;
+    --text-3:      #5b6377;
+    --border:      rgba(255,255,255,0.08);
+    --border-2:    rgba(255,255,255,0.12);
+    --glass:       rgba(11,14,31,0.55);
   }
+
   html, body { height: 100%; }
+  html { scroll-behavior: smooth; }
   body {
-    background: var(--bg);
+    background: var(--bg-0);
     color: var(--text);
-    font-family: 'Syne', sans-serif;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
+    font-family: 'Sora', system-ui, sans-serif;
+    font-weight: 400;
+    line-height: 1.5;
     overflow-x: hidden;
+    cursor: none; /* cursor customizado */
+  }
+  @media (hover: none) { body { cursor: auto; } .cursor, .cursor-dot { display: none; } }
+
+  ::selection { background: var(--cyan); color: var(--bg-0); }
+
+  /* ============ CURSOR CUSTOMIZADO ============ */
+  .cursor {
+    position: fixed; top: 0; left: 0;
+    width: 32px; height: 32px;
+    border: 1.5px solid var(--cyan);
+    border-radius: 50%;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    transition: width 0.2s, height 0.2s, border-color 0.2s, background 0.2s;
+    z-index: 9999;
+    mix-blend-mode: difference;
+  }
+  .cursor-dot {
+    position: fixed; top: 0; left: 0;
+    width: 5px; height: 5px;
+    background: var(--cyan);
+    border-radius: 50%;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    z-index: 10000;
+    box-shadow: 0 0 12px var(--cyan-glow);
+  }
+  .cursor.is-hover {
+    width: 60px; height: 60px;
+    border-color: var(--purple);
+    background: rgba(168,85,247,0.08);
   }
 
-  /* Grid de fundo decorativo */
-  body::before {
-    content: '';
+  /* ============ FUNDOS — Spline + grid + orbs ============ */
+  .spline-bg {
     position: fixed; inset: 0;
+    z-index: 0;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+    pointer-events: none;
+  }
+  .spline-bg.is-loaded { opacity: 0.55; }
+  .spline-bg spline-viewer {
+    width: 100%; height: 100%;
+    display: block;
+  }
+  /* esconde a marca d'água do spline-viewer quando renderizado */
+  .spline-bg::after {
+    content: '';
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 220px; height: 80px;
+    background: var(--bg-0);
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .grid-bg {
+    position: fixed; inset: 0; z-index: 1;
     background-image:
-      linear-gradient(rgba(34,211,238,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(34,211,238,0.04) 1px, transparent 1px);
-    background-size: 60px 60px;
+      linear-gradient(rgba(34,211,238,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(34,211,238,0.06) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, #000 30%, transparent 80%);
     pointer-events: none;
-    z-index: 0;
-  }
-  body::after {
-    content: '';
-    position: fixed; inset: 0;
-    background:
-      radial-gradient(ellipse 60% 40% at 0% 0%, rgba(34,211,238,0.08) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 100% 100%, rgba(168,85,247,0.08) 0%, transparent 60%);
-    pointer-events: none;
-    z-index: 0;
   }
 
+  .orbs {
+    position: fixed; inset: 0; z-index: 1;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0.7;
+    will-change: transform;
+  }
+  .orb-1 {
+    top: -10%; left: -10%;
+    width: 460px; height: 460px;
+    background: radial-gradient(circle, var(--cyan), transparent 65%);
+    animation: orb-drift-1 22s ease-in-out infinite alternate;
+  }
+  .orb-2 {
+    bottom: -15%; right: -10%;
+    width: 520px; height: 520px;
+    background: radial-gradient(circle, var(--purple), transparent 65%);
+    animation: orb-drift-2 26s ease-in-out infinite alternate;
+  }
+  .orb-3 {
+    top: 40%; left: 40%;
+    width: 280px; height: 280px;
+    background: radial-gradient(circle, var(--pink), transparent 65%);
+    opacity: 0.4;
+    animation: orb-drift-3 30s ease-in-out infinite alternate;
+  }
+  @keyframes orb-drift-1 { from { transform: translate(0,0) scale(1); } to { transform: translate(120px,80px) scale(1.2); } }
+  @keyframes orb-drift-2 { from { transform: translate(0,0) scale(1); } to { transform: translate(-100px,-60px) scale(0.9); } }
+  @keyframes orb-drift-3 { from { transform: translate(0,0); } to { transform: translate(60px,-100px); } }
+
+  /* Camada de grão sutil */
+  .noise {
+    position: fixed; inset: 0; z-index: 2;
+    pointer-events: none;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ============ NAV ============ */
+  nav.top {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 32px;
+    backdrop-filter: blur(8px);
+    background: linear-gradient(180deg, rgba(5,6,15,0.6), transparent);
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--text);
+  }
+  .brand-mark {
+    width: 22px; height: 22px;
+    background: linear-gradient(135deg, var(--cyan), var(--purple));
+    border-radius: 6px;
+    box-shadow: 0 0 16px var(--cyan-glow);
+  }
+  .brand-dot { color: var(--cyan); }
+
+  .nav-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-2);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .nav-meta .live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 10px var(--green);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }
+
+  /* ============ MAIN ============ */
   main {
     position: relative;
-    z-index: 1;
-    flex: 1;
+    z-index: 5;
     width: 100%;
-    max-width: 1100px;
+    max-width: 1280px;
     margin: 0 auto;
-    padding: 60px 24px 40px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
+    padding: 130px 32px 60px;
   }
 
+  .hero {
+    text-align: center;
+    margin-bottom: 80px;
+    opacity: 0;
+    transform: translateY(20px);
+    animation: rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
+  }
+  @keyframes rise { to { opacity: 1; transform: translateY(0); } }
+
   .badge {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: rgba(34,211,238,0.08);
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 7px 18px;
+    background: rgba(34,211,238,0.06);
     border: 1px solid rgba(34,211,238,0.25);
-    border-radius: 24px;
-    padding: 6px 16px;
-    font-family: 'Space Mono', monospace;
-    font-size: 13px;
+    border-radius: 100px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
     color: var(--cyan);
-    margin-bottom: 28px;
+    letter-spacing: 0.08em;
+    margin-bottom: 36px;
+    backdrop-filter: blur(8px);
   }
   .badge-dot {
     width: 6px; height: 6px;
     border-radius: 50%;
     background: var(--green);
-    box-shadow: 0 0 8px var(--green);
-    animation: pulse 2s infinite;
+    box-shadow: 0 0 12px var(--green);
+    animation: pulse 1.6s ease-in-out infinite;
   }
-  @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.4 } }
 
-  h1 {
-    font-size: clamp(2rem, 6vw, 3.6rem);
-    font-weight: 800;
-    line-height: 1.1;
-    letter-spacing: -0.02em;
-    margin-bottom: 16px;
+  h1.hero-title {
+    font-family: 'Anton', sans-serif;
+    font-weight: 400;
+    font-size: clamp(2.6rem, 8vw, 6.5rem);
+    line-height: 0.95;
+    letter-spacing: 0.005em;
+    text-transform: uppercase;
+    color: var(--text);
+    margin-bottom: 28px;
   }
-  h1 .accent {
-    background: linear-gradient(135deg, var(--cyan), var(--purple));
+  h1 .line-1 { display: block; }
+  h1 .line-2 { display: block; color: var(--text-2); font-size: 0.92em; }
+  h1 .typed-wrap {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--cyan), var(--purple) 60%, var(--pink));
     -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
     background-clip: text;
+    color: transparent;
+    min-width: 6ch;
+    text-align: left;
+  }
+  .typed-cursor {
+    display: inline-block;
+    width: 0.08em;
+    background: var(--cyan);
+    margin-left: 0.04em;
+    height: 0.85em;
+    vertical-align: -0.08em;
+    box-shadow: 0 0 14px var(--cyan-glow);
+    animation: blink 1s steps(2) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .hero-subtitle {
+    max-width: 600px;
+    margin: 0 auto;
+    color: var(--text-2);
+    font-size: clamp(1rem, 1.6vw, 1.18rem);
+    line-height: 1.6;
+    font-weight: 300;
   }
 
-  .subtitle {
-    color: var(--text2);
-    font-size: clamp(1rem, 2vw, 1.2rem);
-    max-width: 580px;
-    margin-bottom: 56px;
-    line-height: 1.5;
+  .scroll-hint {
+    margin-top: 44px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-3);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 10px;
+  }
+  .scroll-hint::before, .scroll-hint::after {
+    content: '';
+    width: 28px; height: 1px;
+    background: var(--text-3);
   }
 
-  .grid {
+  /* ============ CARDS COM TILT 3D ============ */
+  .cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 22px;
-    width: 100%;
-    margin-bottom: 48px;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 26px;
+    perspective: 1400px;
   }
 
   .card {
     position: relative;
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 28px 24px;
-    text-align: left;
+    background: var(--glass);
+    border: 1px solid var(--border-2);
+    border-radius: 22px;
+    padding: 32px 28px 28px;
     text-decoration: none;
     color: var(--text);
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.4s, box-shadow 0.4s;
+    transform-style: preserve-3d;
+    will-change: transform;
+    display: flex; flex-direction: column;
+    opacity: 0;
+    transform: translateY(30px);
+    animation: rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
+  .card:nth-child(1) { animation-delay: 0.5s; }
+  .card:nth-child(2) { animation-delay: 0.65s; }
+  .card:nth-child(3) { animation-delay: 0.8s; }
+
+  .card[data-color="cyan"]   { --accent: var(--cyan);   --accent-glow: var(--cyan-glow); }
+  .card[data-color="pink"]   { --accent: var(--pink);   --accent-glow: var(--pink-glow); }
+  .card[data-color="purple"] { --accent: var(--purple); --accent-glow: var(--purple-glow); }
+
+  /* Borda gradiente no topo */
   .card::before {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--accent), transparent);
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.6;
+  }
+  /* Glow seguidor do mouse */
+  .card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      400px circle at var(--mx, 50%) var(--my, 50%),
+      color-mix(in srgb, var(--accent) 18%, transparent),
+      transparent 60%
+    );
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
   }
   .card:hover {
-    transform: translateY(-4px);
-    border-color: var(--accent);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+    border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+    box-shadow: 0 24px 60px -20px var(--accent-glow),
+                0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent) inset;
   }
+  .card:hover::after { opacity: 1; }
 
-  .card[data-color="cyan"] { --accent: var(--cyan); }
-  .card[data-color="pink"] { --accent: var(--pink); }
-  .card[data-color="purple"] { --accent: var(--purple); }
-
-  .icon {
-    font-size: 38px;
-    margin-bottom: 14px;
-    line-height: 1;
-  }
-  .card-tag {
-    display: inline-block;
-    font-family: 'Space Mono', monospace;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 12%, transparent);
-    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-    border-radius: 4px;
-    padding: 3px 8px;
-    margin-bottom: 12px;
-    align-self: flex-start;
-  }
-  .card-title {
-    font-size: 22px;
-    font-weight: 700;
-    margin-bottom: 8px;
-  }
-  .card-desc {
-    color: var(--text2);
-    font-size: 14px;
-    line-height: 1.6;
-    margin-bottom: 18px;
+  /* Conteúdo do card sobe levemente no hover */
+  .card-content {
+    transform: translateZ(30px);
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex; flex-direction: column;
     flex: 1;
   }
+
+  .card-icon {
+    width: 56px; height: 56px;
+    display: flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+    border-radius: 14px;
+    font-size: 28px;
+    margin-bottom: 18px;
+    box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+
+  .card-tag {
+    align-self: flex-start;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    border-radius: 4px;
+    padding: 4px 10px;
+    margin-bottom: 14px;
+  }
+
+  .card-title {
+    font-family: 'Sora', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 10px;
+  }
+
+  .card-desc {
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 24px;
+    flex: 1;
+    font-weight: 300;
+  }
+
   .card-cta {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    color: var(--accent);
-    font-family: 'Space Mono', monospace;
-    font-size: 13px;
+    gap: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    transition: gap 0.2s;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    transition: gap 0.3s;
   }
-  .card:hover .card-cta { gap: 14px; }
+  .card-cta .arrow {
+    display: inline-block;
+    transition: transform 0.3s;
+  }
+  .card:hover .card-cta .arrow { transform: translateX(6px); }
 
+  /* ============ FOOTER ============ */
   footer {
     position: relative;
-    z-index: 1;
+    z-index: 5;
+    margin-top: 80px;
     border-top: 1px solid var(--border);
-    background: rgba(10,15,30,0.6);
-    padding: 22px 24px;
+    padding: 28px 32px 24px;
     text-align: center;
-    color: var(--text2);
+    color: var(--text-2);
     font-size: 13px;
-    line-height: 1.7;
+    backdrop-filter: blur(8px);
+    background: rgba(5,6,15,0.6);
   }
   footer a { color: var(--cyan); text-decoration: none; }
   footer a:hover { text-decoration: underline; }
-  footer .crew { color: var(--cyan); font-weight: 700; }
+  footer .crew { color: var(--text); font-weight: 600; }
   footer .reserved {
     display: block;
-    margin-top: 4px;
-    font-family: 'Space Mono', monospace;
+    margin-top: 6px;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
-    color: rgba(148,163,184,0.7);
+    color: var(--text-3);
+    letter-spacing: 0.05em;
+  }
+
+  /* ============ RESPONSIVO ============ */
+  @media (max-width: 640px) {
+    nav.top { padding: 16px 20px; }
+    .nav-meta { display: none; }
+    main { padding: 110px 20px 40px; }
+    .hero { margin-bottom: 56px; }
+    .badge { font-size: 11px; margin-bottom: 28px; }
+    h1.hero-title { letter-spacing: 0.01em; }
+    .scroll-hint { margin-top: 32px; }
+    .cards { gap: 18px; }
+    .card { padding: 26px 22px 22px; }
+  }
+
+  /* Acessibilidade — usuários com motion reduzido */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    .typed-cursor { animation: none; }
   }
 </style>
 </head>
 <body>
 
-<main>
-  <span class="badge">
-    <span class="badge-dot"></span>
-    Feira de Profissões 2026 — Unisanta
-  </span>
+<!-- Cursor customizado -->
+<div class="cursor" id="cursor"></div>
+<div class="cursor-dot" id="cursor-dot"></div>
 
-  <h1>
-    3 experiências interativas pra<br>
-    explorar o mundo da <span class="accent">tecnologia</span>
-  </h1>
+<!-- Spline 3D background (lazy) -->
+<div class="spline-bg" id="spline-bg">
+  <spline-viewer url="https://prod.spline.design/Slk6b8kz3LRlKiyk/scene.splinecode"></spline-viewer>
+</div>
 
-  <p class="subtitle">
-    Escolha um dos projetos abaixo. Tudo roda direto no navegador,
-    sem instalar nada. Bora brincar?
-  </p>
+<!-- Camadas decorativas -->
+<div class="grid-bg" aria-hidden="true"></div>
+<div class="orbs" aria-hidden="true">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+<div class="noise" aria-hidden="true"></div>
 
-  <div class="grid">
-
-    <a href="feira-profissoes.html" class="card" data-color="cyan">
-      <div class="icon">🎮</div>
-      <span class="card-tag">5 minigames</span>
-      <h2 class="card-title">TechFair</h2>
-      <p class="card-desc">
-        Login, hub e 5 minigames de programação: monte HTML,
-        bata o CSS Battle, corra digitando código, ache bugs e
-        programe um robô em labirinto.
-      </p>
-      <span class="card-cta">Entrar →</span>
-    </a>
-
-    <a href="pokemon-edu-battle.html" class="card" data-color="pink">
-      <div class="icon">⚡</div>
-      <span class="card-tag">Game Boy style</span>
-      <h2 class="card-title">PokéCode</h2>
-      <p class="card-desc">
-        Batalha Pokémon controlada por comandos digitados.
-        Modos 1 jogador (vs CPU) e 2 jogadores. Inclui tutorial
-        passo-a-passo pra quem nunca programou.
-      </p>
-      <span class="card-cta">Batalhar →</span>
-    </a>
-
-    <a href="https://unifront-unisanta.pages.dev" class="card" data-color="purple" target="_blank" rel="noopener">
-      <div class="icon">🌌</div>
-      <span class="card-tag">Front-end moderno</span>
-      <h2 class="card-title">UniFront</h2>
-      <p class="card-desc">
-        Landing page sobre boas práticas de front-end —
-        Clean Code, acessibilidade e performance — em um visual
-        espacial com vídeos e efeito glass.
-      </p>
-      <span class="card-cta">Explorar →</span>
-    </a>
-
+<!-- Navbar -->
+<nav class="top">
+  <div class="brand">
+    <span class="brand-mark"></span>
+    UNISANTA<span class="brand-dot">.</span>FEIRA
   </div>
+  <div class="nav-meta">
+    <span class="live-dot"></span>
+    AO VIVO · 2026
+  </div>
+</nav>
+
+<!-- Conteúdo principal -->
+<main>
+  <section class="hero">
+    <span class="badge">
+      <span class="badge-dot"></span>
+      Feira de Profissões 2026 — Unisanta
+    </span>
+
+    <h1 class="hero-title">
+      <span class="line-1">3 experiências interativas</span>
+      <span class="line-2">para explorar o mundo da</span>
+      <span class="typed-wrap" aria-live="polite">
+        <span id="typed"></span><span class="typed-cursor" aria-hidden="true"></span>
+      </span>
+    </h1>
+
+    <p class="hero-subtitle">
+      Tudo roda direto no navegador, sem instalar nada. Escolha um dos
+      projetos abaixo e bora brincar.
+    </p>
+
+    <div class="scroll-hint">scroll · escolha sua jornada</div>
+  </section>
+
+  <section class="cards" id="cards">
+
+    <a href="feira-profissoes.html" class="card" data-color="cyan" data-hover>
+      <div class="card-content">
+        <div class="card-icon">🎮</div>
+        <span class="card-tag">5 minigames</span>
+        <h2 class="card-title">TechFair</h2>
+        <p class="card-desc">
+          Login, hub e 5 minigames de programação: monte HTML, bata o
+          CSS Battle, corra digitando código, ache bugs e programe um
+          robô em labirinto.
+        </p>
+        <span class="card-cta">Entrar <span class="arrow">→</span></span>
+      </div>
+    </a>
+
+    <a href="pokemon-edu-battle.html" class="card" data-color="pink" data-hover>
+      <div class="card-content">
+        <div class="card-icon">⚡</div>
+        <span class="card-tag">Game Boy style</span>
+        <h2 class="card-title">PokéCode</h2>
+        <p class="card-desc">
+          Batalha Pokémon controlada por comandos digitados. Modos
+          1 jogador (vs CPU) e 2 jogadores. Inclui tutorial passo-a-passo
+          pra quem nunca programou.
+        </p>
+        <span class="card-cta">Batalhar <span class="arrow">→</span></span>
+      </div>
+    </a>
+
+    <a href="https://unifront-unisanta.pages.dev" class="card" data-color="purple" data-hover target="_blank" rel="noopener">
+      <div class="card-content">
+        <div class="card-icon">🌌</div>
+        <span class="card-tag">Front-end moderno</span>
+        <h2 class="card-title">UniFront</h2>
+        <p class="card-desc">
+          Landing page sobre boas práticas de front-end — Clean Code,
+          acessibilidade e performance — em um visual espacial com
+          vídeos e efeito glass.
+        </p>
+        <span class="card-cta">Explorar <span class="arrow">→</span></span>
+      </div>
+    </a>
+
+  </section>
 </main>
 
 <footer>
@@ -290,6 +591,134 @@
   <span class="crew">JP</span>, <span class="crew">Igor</span> e <span class="crew">Giovanni</span>.
   <span class="reserved">© 2026 — Todos os direitos reservados à Universidade Santa Cecília (Unisanta).</span>
 </footer>
+
+<script>
+  /* =========================================================
+     1) CURSOR CUSTOMIZADO — segue o mouse com easing
+     ========================================================= */
+  (() => {
+    const cursor = document.getElementById('cursor');
+    const dot    = document.getElementById('cursor-dot');
+    if (!cursor || !dot) return;
+
+    let mx = window.innerWidth / 2, my = window.innerHeight / 2;
+    let cx = mx, cy = my;
+
+    window.addEventListener('mousemove', (e) => {
+      mx = e.clientX; my = e.clientY;
+      // O ponto interno acompanha imediatamente; o anel tem easing.
+      dot.style.transform = `translate(${mx}px, ${my}px) translate(-50%, -50%)`;
+    });
+
+    function tick() {
+      cx += (mx - cx) * 0.18;
+      cy += (my - cy) * 0.18;
+      cursor.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%)`;
+      requestAnimationFrame(tick);
+    }
+    tick();
+
+    // Hover-state em elementos interativos
+    document.querySelectorAll('a, button, [data-hover]').forEach(el => {
+      el.addEventListener('mouseenter', () => cursor.classList.add('is-hover'));
+      el.addEventListener('mouseleave', () => cursor.classList.remove('is-hover'));
+    });
+  })();
+
+  /* =========================================================
+     2) TYPEWRITER — alterna palavras-chave no headline
+     ========================================================= */
+  (() => {
+    const target = document.getElementById('typed');
+    if (!target) return;
+    const words = ['tecnologia', 'programação', 'front-end', 'design', 'código', 'futuro'];
+    let wordIdx = 0;
+    let charIdx = 0;
+    let deleting = false;
+
+    function step() {
+      const current = words[wordIdx];
+      if (!deleting) {
+        target.textContent = current.slice(0, ++charIdx);
+        if (charIdx === current.length) {
+          deleting = true;
+          return setTimeout(step, 1800);
+        }
+        return setTimeout(step, 75);
+      } else {
+        target.textContent = current.slice(0, --charIdx);
+        if (charIdx === 0) {
+          deleting = false;
+          wordIdx = (wordIdx + 1) % words.length;
+          return setTimeout(step, 250);
+        }
+        return setTimeout(step, 40);
+      }
+    }
+    step();
+  })();
+
+  /* =========================================================
+     3) CARDS COM TILT 3D + GLOW SEGUIDOR DO MOUSE
+     ========================================================= */
+  (() => {
+    const cards = document.querySelectorAll('.card');
+    if (!cards.length) return;
+
+    cards.forEach(card => {
+      let raf = 0;
+
+      card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const cx = rect.width / 2;
+        const cy = rect.height / 2;
+
+        // Rotação proporcional à distância do centro (max ±9deg)
+        const rotateX = ((y - cy) / cy) * -9;
+        const rotateY = ((x - cx) / cx) * 9;
+
+        // Posição do glow (em %)
+        const mxPct = (x / rect.width) * 100;
+        const myPct = (y / rect.height) * 100;
+
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(() => {
+          card.style.transform =
+            `perspective(1400px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) translateZ(0)`;
+          card.style.setProperty('--mx', mxPct + '%');
+          card.style.setProperty('--my', myPct + '%');
+        });
+      });
+
+      card.addEventListener('mouseleave', () => {
+        cancelAnimationFrame(raf);
+        card.style.transform = '';
+        card.style.removeProperty('--mx');
+        card.style.removeProperty('--my');
+      });
+    });
+  })();
+
+  /* =========================================================
+     4) SPLINE — fade-in quando a cena 3D termina de carregar
+     ========================================================= */
+  (() => {
+    const wrap = document.getElementById('spline-bg');
+    if (!wrap) return;
+    const viewer = wrap.querySelector('spline-viewer');
+    if (!viewer) return;
+
+    const reveal = () => wrap.classList.add('is-loaded');
+
+    // O <spline-viewer> dispara o evento 'load' quando a cena 3D fica pronta.
+    viewer.addEventListener('load', reveal, { once: true });
+
+    // Fallback: revela mesmo se o evento não disparar (Wi-Fi lento, bloqueio etc.)
+    setTimeout(reveal, 4500);
+  })();
+</script>
 
 </body>
 </html>
