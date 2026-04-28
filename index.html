@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feira de Profissões 2026 — Unisanta</title>
+<meta name="description" content="Menu interativo dos 3 projetos da Feira de Profissões 2026 da Unisanta — TechFair, PokéCode e UniFront.">
+<meta name="author" content="JP, Igor e Giovanni — Universidade Santa Cecília (Unisanta)">
+<meta name="theme-color" content="#0a0f1e">
+
+<meta property="og:title" content="Feira de Profissões 2026 — Unisanta">
+<meta property="og:description" content="3 experiências interativas criadas por alunos da Unisanta para apresentar carreiras em tecnologia.">
+<meta property="og:type" content="website">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0f1e;
+    --bg2: #0f172a;
+    --bg3: #1e293b;
+    --cyan: #22d3ee;
+    --purple: #a855f7;
+    --green: #4ade80;
+    --pink: #ec4899;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --border: rgba(34,211,238,0.15);
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  /* Grid de fundo decorativo */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(34,211,238,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(34,211,238,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 0% 0%, rgba(34,211,238,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 100% 100%, rgba(168,85,247,0.08) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  main {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 60px 24px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(34,211,238,0.08);
+    border: 1px solid rgba(34,211,238,0.25);
+    border-radius: 24px;
+    padding: 6px 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--cyan);
+    margin-bottom: 28px;
+  }
+  .badge-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.4 } }
+
+  h1 {
+    font-size: clamp(2rem, 6vw, 3.6rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+  }
+  h1 .accent {
+    background: linear-gradient(135deg, var(--cyan), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    color: var(--text2);
+    font-size: clamp(1rem, 2vw, 1.2rem);
+    max-width: 580px;
+    margin-bottom: 56px;
+    line-height: 1.5;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 22px;
+    width: 100%;
+    margin-bottom: 48px;
+  }
+
+  .card {
+    position: relative;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 24px;
+    text-align: left;
+    text-decoration: none;
+    color: var(--text);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    border-color: var(--accent);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  }
+
+  .card[data-color="cyan"] { --accent: var(--cyan); }
+  .card[data-color="pink"] { --accent: var(--pink); }
+  .card[data-color="purple"] { --accent: var(--purple); }
+
+  .icon {
+    font-size: 38px;
+    margin-bottom: 14px;
+    line-height: 1;
+  }
+  .card-tag {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    border-radius: 4px;
+    padding: 3px 8px;
+    margin-bottom: 12px;
+    align-self: flex-start;
+  }
+  .card-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .card-desc {
+    color: var(--text2);
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 18px;
+    flex: 1;
+  }
+  .card-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: gap 0.2s;
+  }
+  .card:hover .card-cta { gap: 14px; }
+
+  footer {
+    position: relative;
+    z-index: 1;
+    border-top: 1px solid var(--border);
+    background: rgba(10,15,30,0.6);
+    padding: 22px 24px;
+    text-align: center;
+    color: var(--text2);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  footer a { color: var(--cyan); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+  footer .crew { color: var(--cyan); font-weight: 700; }
+  footer .reserved {
+    display: block;
+    margin-top: 4px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: rgba(148,163,184,0.7);
+  }
+</style>
+</head>
+<body>
+
+<main>
+  <span class="badge">
+    <span class="badge-dot"></span>
+    Feira de Profissões 2026 — Unisanta
+  </span>
+
+  <h1>
+    3 experiências interativas pra<br>
+    explorar o mundo da <span class="accent">tecnologia</span>
+  </h1>
+
+  <p class="subtitle">
+    Escolha um dos projetos abaixo. Tudo roda direto no navegador,
+    sem instalar nada. Bora brincar?
+  </p>
+
+  <div class="grid">
+
+    <a href="feira-profissoes.html" class="card" data-color="cyan">
+      <div class="icon">🎮</div>
+      <span class="card-tag">5 minigames</span>
+      <h2 class="card-title">TechFair</h2>
+      <p class="card-desc">
+        Login, hub e 5 minigames de programação: monte HTML,
+        bata o CSS Battle, corra digitando código, ache bugs e
+        programe um robô em labirinto.
+      </p>
+      <span class="card-cta">Entrar →</span>
+    </a>
+
+    <a href="pokemon-edu-battle.html" class="card" data-color="pink">
+      <div class="icon">⚡</div>
+      <span class="card-tag">Game Boy style</span>
+      <h2 class="card-title">PokéCode</h2>
+      <p class="card-desc">
+        Batalha Pokémon controlada por comandos digitados.
+        Modos 1 jogador (vs CPU) e 2 jogadores. Inclui tutorial
+        passo-a-passo pra quem nunca programou.
+      </p>
+      <span class="card-cta">Batalhar →</span>
+    </a>
+
+    <a href="https://unifront-unisanta.pages.dev" class="card" data-color="purple" target="_blank" rel="noopener">
+      <div class="icon">🌌</div>
+      <span class="card-tag">Front-end moderno</span>
+      <h2 class="card-title">UniFront</h2>
+      <p class="card-desc">
+        Landing page sobre boas práticas de front-end —
+        Clean Code, acessibilidade e performance — em um visual
+        espacial com vídeos e efeito glass.
+      </p>
+      <span class="card-cta">Explorar →</span>
+    </a>
+
+  </div>
+</main>
+
+<footer>
+  Feito por alunos da
+  <a href="https://www.unisanta.br" target="_blank" rel="noopener">Universidade Santa Cecília (Unisanta)</a> —
+  <span class="crew">JP</span>, <span class="crew">Igor</span> e <span class="crew">Giovanni</span>.
+  <span class="reserved">© 2026 — Todos os direitos reservados à Universidade Santa Cecília (Unisanta).</span>
+</footer>
+
+</body>
+</html>
