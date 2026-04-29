@@ -766,11 +766,28 @@ function setDialog(msg) {
 }
 
 /* =====================================================================
-   PIXEL ART — sprites 16x16 multi-color, inspirados nos sprites GBA.
-   Cada índice mapeia para uma cor; 0 é transparente. Os parâmetros
-   color1/color2 são ignorados aqui (mantidos pra compat); cada Pokémon
-   tem sua própria paleta hardcoded.
+   SPRITES — PNGs oficiais carregados de /sprites/ com cache local.
+   image-rendering: pixelated mantém a pixel art nítida no upscale.
+   Fallback: se a PNG falhar, desenha o sprite procedural definido em
+   SPRITE_DEFS abaixo (paleta multi-color em grid 16x16).
    ===================================================================== */
+const SPRITE_IMAGES = {
+  Charmander: 'sprites/charmander.png',
+  Bulbasaur:  'sprites/bulbasaur.png',
+  Squirtle:   'sprites/squirtle.png',
+};
+const _spriteCache = {};
+function loadSpriteImage(name) {
+  if (_spriteCache[name]) return _spriteCache[name];
+  const url = SPRITE_IMAGES[name];
+  if (!url) return null;
+  const img = new Image();
+  img.src = url;
+  _spriteCache[name] = img;
+  return img;
+}
+
+// Fallback procedural caso o PNG não carregue (offline/falha).
 const SPRITE_DEFS = {
   Charmander: {
     palette: {
@@ -873,19 +890,16 @@ const SPRITE_DEFS = {
   },
 };
 
-function drawSprite(canvas, _color1, _color2, name) {
+function drawProceduralSprite(canvas, name) {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
-  ctx.clearRect(0, 0, W, H);
-
   const def = SPRITE_DEFS[name] || SPRITE_DEFS.Squirtle;
   const grid = def.grid;
   const palette = def.palette;
-  const N = 16; // todas as grades são 16x16
+  const N = 16;
   const P = Math.floor(Math.min(W, H) / N);
   const offsetX = Math.floor((W - N * P) / 2);
   const offsetY = Math.floor((H - N * P) / 2);
-
   for (let y = 0; y < grid.length; y++) {
     const row = grid[y];
     for (let x = 0; x < row.length; x++) {
@@ -896,6 +910,34 @@ function drawSprite(canvas, _color1, _color2, name) {
       ctx.fillStyle = color;
       ctx.fillRect(offsetX + x * P, offsetY + y * P, P, P);
     }
+  }
+}
+
+function drawSprite(canvas, _color1, _color2, name) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  // Mantém nitidez de pixel art quando a PNG é escalada
+  ctx.imageSmoothingEnabled = false;
+
+  const img = loadSpriteImage(name);
+  if (img && img.complete && img.naturalWidth > 0) {
+    // Mantém aspect ratio + leve padding pra não colar nas bordas do canvas
+    const maxSide = Math.min(W, H) * 0.95;
+    const ratio = img.naturalWidth / img.naturalHeight;
+    let dw, dh;
+    if (ratio >= 1) { dw = maxSide; dh = maxSide / ratio; }
+    else            { dh = maxSide; dw = maxSide * ratio; }
+    const dx = (W - dw) / 2;
+    const dy = (H - dh) / 2;
+    ctx.drawImage(img, dx, dy, dw, dh);
+  } else if (img) {
+    // PNG ainda carregando — desenha fallback procedural agora,
+    // e quando a imagem terminar de carregar, redesenha por cima.
+    drawProceduralSprite(canvas, name);
+    img.addEventListener('load', () => drawSprite(canvas, _color1, _color2, name), { once: true });
+  } else {
+    drawProceduralSprite(canvas, name);
   }
 }
 

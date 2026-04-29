@@ -321,18 +321,24 @@ function AppProvider({ children }) {
 
   // Salva (ou atualiza) a entrada do visitante atual no ranking GLOBAL via /api/ranking.
   // Idempotente — chamado a cada conclusão de jogo + no logout.
-  // Em caso de falha de rede, persiste localmente pra tentar de novo no próximo ciclo.
+  // IMPORTANTE: lemos os scores/times direto do sessionStorage (e NÃO do React state),
+  // porque addScore/addTime escrevem no sessionStorage SÍNCRONAMENTE mas setScores/setTimes
+  // são assíncronos. Sem isso, a closure do setTimeout pega state stale e o último jogo
+  // concluído nunca entra no entry.
   const saveRankingEntry = async () => {
     if (!user) return;
-    const completedGames = Object.keys(scores).length;
+    let curScores = {}, curTimes = {};
+    try { curScores = JSON.parse(sessionStorage.getItem('techfair_scores') || '{}'); } catch {}
+    try { curTimes  = JSON.parse(sessionStorage.getItem('techfair_times')  || '{}'); } catch {}
+    const completedGames = Object.keys(curScores).length;
     if (completedGames === 0) return;
-    const tScore = Object.values(scores).reduce((a, b) => a + b, 0);
-    const tTime = Object.values(times).reduce((a, b) => a + (b || 0), 0);
+    const tScore = Object.values(curScores).reduce((a, b) => a + b, 0);
+    const tTime  = Object.values(curTimes).reduce((a, b) => a + (b || 0), 0);
     const entry = {
       id: user.id,
       name: user.name,
-      scores: { ...scores },
-      times: { ...times },
+      scores: curScores,
+      times: curTimes,
       totalScore: tScore,
       totalTime: tTime,
       completedGames,
@@ -1875,7 +1881,7 @@ function RankingPage() {
               color: 'var(--red)', padding: '8px 16px', borderRadius: 8, cursor: 'pointer',
               fontSize: 12, fontFamily: 'Space Mono',
             }}>
-              ⚠ Limpar ranking desta máquina
+              ⚠ Limpar ranking global
             </button>
           </div>
         )}
