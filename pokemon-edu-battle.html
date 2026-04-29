@@ -155,8 +155,11 @@ h1 {
   50%     { filter: none; }
 }
 
-.sprite-enemy  { top: 18px; left: 22px; width: 84px; height: 84px; }
-.sprite-player { bottom: 38px; right: 26px; width: 100px; height: 100px; }
+/* Layout: PLAYER na ESQUERDA (sprite + label), ENEMY na DIREITA.
+   Antes era diagonal estilo GBA clássico mas confundia os visitantes —
+   agora cada Pokémon fica do mesmo lado da sua ficha. */
+.sprite-enemy  { top: 60px;   right: 30px; width: 84px;  height: 84px; }
+.sprite-player { bottom: 70px; left: 30px;  width: 100px; height: 100px; }
 
 /* =====================================================================
    PAINÉIS DE STATUS
@@ -171,8 +174,8 @@ h1 {
   font-size: 0.7rem;
   font-family: 'Courier New', monospace;
 }
-.status-enemy  { top: 10px;  right: 10px; }
-.status-player { bottom: 50px; left: 10px; }
+.status-enemy  { top: 10px;    right: 10px; }
+.status-player { bottom: 10px; left: 10px;  }
 
 .status-name {
   font-weight: bold;
