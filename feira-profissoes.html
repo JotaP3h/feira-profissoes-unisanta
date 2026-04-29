@@ -1260,9 +1260,13 @@ function TypeRacerGame() {
 
         {(status === 'playing' || status === 'done') && (
           <div>
-            <div className="code-block" style={{ marginBottom: 20, fontSize: 14, lineHeight: 1.8 }}>
-              <p style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 8, fontFamily: 'Space Mono' }}>// DIGITE O CÓDIGO ABAIXO</p>
-              <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'Space Mono' }}>{renderTarget()}</pre>
+            <div className="code-block"
+                 onCopy={e => e.preventDefault()}
+                 onCut={e => e.preventDefault()}
+                 onContextMenu={e => e.preventDefault()}
+                 style={{ marginBottom: 20, fontSize: 14, lineHeight: 1.8, userSelect: 'none', WebkitUserSelect: 'none' }}>
+              <p style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 8, fontFamily: 'Space Mono' }}>// DIGITE O CÓDIGO ABAIXO (sem copiar 😉)</p>
+              <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'Space Mono', userSelect: 'none' }}>{renderTarget()}</pre>
             </div>
 
             <textarea
@@ -1271,6 +1275,8 @@ function TypeRacerGame() {
               style={{ height: 140, resize: 'none', fontFamily: 'Space Mono', fontSize: 14, lineHeight: 1.8 }}
               value={input}
               onChange={handleInput}
+              onPaste={e => { e.preventDefault(); }}
+              onDrop={e => e.preventDefault()}
               disabled={status === 'done'}
               placeholder="Comece a digitar aqui..."
               spellCheck={false}
