@@ -160,8 +160,18 @@ sort((a, b) => (b.score - a.score) || (a.time - b.time));
 
 ## 3. PokéCode (`pokemon-edu-battle.html`)
 
+> 👤 **Autoria:** desenvolvido **individualmente** por **Igor**
+> ([@Igor2920](https://github.com/Igor2920)).
+
 Batalha Pokémon estilo Game Boy controlada por **comandos digitados** —
 ensina noção de "computer literacy" de forma divertida.
+
+> ⚠️ **AVISO LEGAL — uso educacional sem fins lucrativos.**
+> Pokémon® e todos os personagens, sprites e elementos relacionados são
+> propriedade da **Nintendo / Game Freak / The Pokémon Company**. Este
+> projeto é uma **ferramenta educacional**, sem qualquer geração de
+> receita ou benefício financeiro. Se um representante legal solicitar
+> a remoção, atenderemos imediatamente.
 
 ### Stack
 
@@ -354,10 +364,12 @@ universidade e os alunos reconhecem na hora.
 
 Desenvolvido por alunos da **Universidade Santa Cecília (Unisanta)**:
 
-- **JP** ([@JotaP3h](https://github.com/JotaP3h)) — concepção,
-  arquitetura front-end, UniFront completo, backend KV.
-- **Igor** — desenvolvimento e testes.
-- **Giovanni** — desenvolvimento e testes.
+- **JP** ([@JotaP3h](https://github.com/JotaP3h)) — concepção, arquitetura
+  front-end, **TechFair / `<Siads>`**, **landing page**, **UniFront** e
+  **backend KV** do leaderboard.
+- **Igor** ([@Igor2920](https://github.com/Igor2920)) — autor do
+  **PokéCode** (Pokedex) por completo.
+- **Giovanni** — apoio em testes e validação no estande.
 
 ---
 

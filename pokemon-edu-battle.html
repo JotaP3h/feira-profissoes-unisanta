@@ -550,14 +550,39 @@ footer {
   letter-spacing: 1px;
   font-family: 'Courier New', monospace;
   line-height: 1.7;
-  max-width: 640px;
+  max-width: 720px;
   margin-left: auto;
   margin-right: auto;
+  padding-bottom: 24px;
 }
 footer a { color: #22d3ee; text-decoration: none; }
 footer a:hover { text-decoration: underline; }
 footer .crew { color: #22d3ee; font-weight: bold; }
 footer .reserved { display: block; margin-top: 6px; color: #475569; font-size: 0.55rem; }
+footer .author {
+  display: block; margin-top: 14px;
+  padding: 10px 14px;
+  border: 1px solid rgba(34,211,238,0.3);
+  border-radius: 6px;
+  background: rgba(34,211,238,0.05);
+  color: #94a3b8;
+  font-size: 0.62rem;
+  letter-spacing: 0.5px;
+}
+footer .author strong { color: #22d3ee; }
+footer .disclaimer {
+  display: block; margin-top: 14px;
+  padding: 10px 14px;
+  border: 1px solid rgba(248,113,113,0.25);
+  border-radius: 6px;
+  background: rgba(248,113,113,0.04);
+  color: #94a3b8;
+  font-size: 0.55rem;
+  line-height: 1.7;
+  text-align: left;
+  letter-spacing: 0.3px;
+}
+footer .disclaimer strong { color: #f87171; }
 </style>
 </head>
 <body>
@@ -683,10 +708,33 @@ footer .reserved { display: block; margin-top: 6px; color: #475569; font-size: 0
 </div>
 
 <footer>
-  PokéCode v2.0 · Feito por alunos da
-  <a href="https://www.unisanta.br" target="_blank" rel="noopener">Unisanta</a> —
-  <span class="crew">JP</span>, <span class="crew">Igor</span> e <span class="crew">Giovanni</span>.
-  <span class="reserved">© 2026 — Todos os direitos reservados à Universidade Santa Cecília (Unisanta).</span>
+  PokéCode v2.0 · Workshop da
+  <a href="https://www.unisanta.br" target="_blank" rel="noopener">Universidade Santa Cecília (Unisanta)</a>.
+
+  <span class="author">
+    🎮 PokéCode foi <strong>desenvolvido individualmente</strong> por
+    <strong><a href="https://github.com/Igor2920" target="_blank" rel="noopener">Igor</a></strong>
+    (<a href="https://github.com/Igor2920" target="_blank" rel="noopener">@Igor2920</a>) —
+    aluno do curso de Sistemas de Informação / Análise e Desenvolvimento
+    de Sistemas da Unisanta.
+  </span>
+
+  <span class="disclaimer">
+    <strong>⚠ AVISO LEGAL — USO EDUCACIONAL.</strong>
+    Pokémon&reg;, todos os personagens, nomes, sprites e elementos
+    relacionados são marcas registradas e propriedade intelectual da
+    <a href="https://www.pokemon.com" target="_blank" rel="noopener">Nintendo, Game Freak e The Pokémon Company</a>.
+    Este projeto é uma <strong>ferramenta educacional sem fins lucrativos</strong>,
+    criado exclusivamente para apresentar conceitos de programação a
+    visitantes da Feira de Profissões da Unisanta. Nenhuma receita,
+    publicidade ou benefício financeiro é gerado a partir deste material.
+    Os autores não reivindicam qualquer direito sobre a propriedade
+    intelectual da franquia Pokémon. Se algum representante legal da
+    Nintendo / The Pokémon Company entrar em contato solicitando a
+    remoção, atenderemos imediatamente.
+  </span>
+
+  <span class="reserved">© 2026 — Código fonte sob licença MIT · Direitos da franquia Pokémon reservados à Nintendo / The Pokémon Company.</span>
 </footer>
 
 <script>
